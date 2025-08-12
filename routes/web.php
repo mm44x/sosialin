@@ -41,8 +41,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 use App\Http\Controllers\WalletController;
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/wallet/topup',  [WalletController::class, 'topupForm'])->name('wallet.topup.form');
-    Route::post('/wallet/topup', [WalletController::class, 'topupStore'])->name('wallet.topup.store');
+    Route::get('/wallet/topup', [WalletController::class, 'create'])->name('wallet.topup');
+    Route::post('/wallet/topup', [WalletController::class, 'store'])->name('wallet.topup.store');
+    Route::get('/wallet/transactions', [WalletController::class, 'transactions'])->name('wallet.transactions');
 });
 
 

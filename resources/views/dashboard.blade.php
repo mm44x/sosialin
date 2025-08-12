@@ -22,10 +22,10 @@
                         Rp {{ number_format(auth()->user()->wallet->balance ?? 0, 0, ',', '.') }}
                     </div>
                     <div class="mt-4 flex gap-2">
-                        <a href="{{ route('wallet.topup.form') }}"
-                            class="px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary/80 focus:ring-2 focus:ring-offset-2 focus:ring-primary dark:focus:ring-offset-bgDark">
-                            Top-up
-                        </a>
+                        <a href="{{ route('wallet.topup') }}"
+                            class="px-3 py-2 rounded-xl bg-primary text-white focus:ring-2 focus:ring-primary">Top-up</a>
+                        <a href="{{ route('wallet.transactions') }}"
+                            class="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 hover:bg-primary/10 focus:ring-2 focus:ring-primary">Riwayat</a>
                         <a href="{{ route('services.index') }}"
                             class="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 focus:ring-2 focus:ring-offset-2 focus:ring-primary dark:focus:ring-offset-bgDark">
                             Lihat Layanan
