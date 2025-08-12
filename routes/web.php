@@ -1,0 +1,49 @@
+<?php
+
+use App\Http\Controllers\ProfileController;
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\HomeController;
+use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\OrderController;
+
+
+Route::get('/', function () {
+    return view('welcome');
+});
+
+Route::get('/dashboard', function () {
+    return view('dashboard');
+})->middleware(['auth', 'verified'])->name('dashboard');
+
+Route::middleware('auth')->group(function () {
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
+
+
+Route::get('/', [HomeController::class, 'index'])->name('home');
+Route::get('/services', [HomeController::class, 'services'])->name('services.index');
+
+Route::middleware(['auth', 'verified', 'admin'])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
+    });
+
+
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/orders/create/{service}', [OrderController::class, 'create'])->name('orders.create');
+    Route::post('/orders/{service}',        [OrderController::class, 'store'])->name('orders.store');
+});
+
+use App\Http\Controllers\WalletController;
+
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/wallet/topup',  [WalletController::class, 'topupForm'])->name('wallet.topup.form');
+    Route::post('/wallet/topup', [WalletController::class, 'topupStore'])->name('wallet.topup.store');
+});
+
+
+require __DIR__ . '/auth.php';
