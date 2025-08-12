@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Service;
 use App\Models\Order;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use App\Jobs\OrderSubmitJob;
 
 class OrderController extends Controller
 {
@@ -78,62 +80,17 @@ class OrderController extends Controller
             ],
         ]);
 
-        // 2) Kirim ke JAP (di luar transaksi DB). Jika gagal, lakukan refund.
-        try {
-            $client = new \App\Services\Smm\JapClient(
-                baseUrl: env('JAP_BASE_URL'),
-                apiKey: env('JAP_API_KEY'),
-                providerId: $service->provider_id
-            );
+        // ...setelah $order dibuat:
+        $idempotencyKey = (string) Str::uuid();
+        $meta = $order->meta ?? [];
+        $meta['idempotency_key'] = $idempotencyKey;
+        $order->update(['meta' => $meta]);
 
-            $payload = [
-                'service'  => (string) $service->external_service_id,
-                'link'     => (string) $request->input('link'),
-                'quantity' => $qty,
-            ];
-            $resp = $client->addOrder($payload);
+        OrderSubmitJob::dispatch($order->id, $idempotencyKey);
 
-            $provId = $resp['order'] ?? $resp['order_id'] ?? $resp['id'] ?? null;
-            if (!$provId) {
-                // Tidak ada ID provider -> anggap gagal, REFUND
-                app(\App\Services\WalletService::class)->credit($userId, $cost, 'refund', [
-                    'reason'   => 'provider_no_id',
-                    'order_id' => $order->id,
-                ]);
-
-                $order->update([
-                    'status' => \App\Models\Order::STATUS_ERROR,
-                    'meta'   => array_merge($order->meta ?? [], ['provider_response' => $resp]),
-                ]);
-
-                return redirect()->route('dashboard')
-                    ->with('status', "Order #{$order->id} gagal di provider (tanpa ID). Saldo dikembalikan.");
-            }
-
-            // Sukses
-            $order->update([
-                'provider_order_id' => (string) $provId,
-                'status'            => \App\Models\Order::STATUS_PROCESSING,
-                'meta'              => array_merge($order->meta ?? [], ['provider_response' => $resp]),
-            ]);
-
-            return redirect()->route('dashboard')
-                ->with('status', "Order #{$order->id} dikirim (ID provider: {$provId}). Saldo terpotong Rp " . number_format($cost, 2));
-        } catch (\Throwable $e) {
-            // Error saat panggil provider -> REFUND
-            app(\App\Services\WalletService::class)->credit($userId, $cost, 'refund', [
-                'reason'   => 'provider_add_failed',
-                'order_id' => $order->id,
-                'error'    => $e->getMessage(),
-            ]);
-
-            $order->update([
-                'status' => \App\Models\Order::STATUS_ERROR,
-                'meta'   => array_merge($order->meta ?? [], ['exception' => $e->getMessage()]),
-            ]);
-
-            return redirect()->route('dashboard')
-                ->with('status', "Order #{$order->id} gagal dikirim ke provider. Saldo dikembalikan. (" . $e->getMessage() . ")");
-        }
+        // Redirect cepat ke dashboard
+        return redirect()
+            ->route('dashboard')
+            ->with('status', "Order #{$order->id} dibuat & sedang diproses. Saldo terpotong Rp " . number_format($cost, 2));
     }
 }
