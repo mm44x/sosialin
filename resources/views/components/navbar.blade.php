@@ -11,6 +11,18 @@
                     class="px-3 py-2 rounded-xl bg-primary text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary">
                     Dashboard
                 </a>
+                <a href="{{ route('wallet.topup') }}"
+                    class="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600
+            {{ request()->routeIs('wallet.topup') ? 'bg-primary text-white' : 'hover:bg-primary/10' }}
+            focus:outline-none focus:ring-2 focus:ring-primary">
+                    Top-up
+                </a>
+                <a href="{{ route('wallet.transactions') }}"
+                    class="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600
+            {{ request()->routeIs('wallet.transactions') ? 'bg-primary text-white' : 'hover:bg-primary/10' }}
+            focus:outline-none focus:ring-2 focus:ring-primary">
+                    Riwayat
+                </a>
             @else
                 <a href="{{ route('login') }}"
                     class="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary">
@@ -24,12 +36,32 @@
 
             @auth
                 @if (auth()->user()->role === 'admin')
-                    <a href="{{ route('admin.dashboard') }}"
-                        class="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary">
-                        Admin
-                    </a>
+                    <details class="relative">
+                        <summary
+                            class="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 cursor-pointer
+               hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary list-none">
+                            Admin
+                        </summary>
+                        <div
+                            class="absolute right-0 mt-2 w-56 z-50 rounded-xl overflow-hidden
+                  bg-white dark:bg-slate-800 shadow-lg ring-1 ring-slate-200/60 dark:ring-white/10">
+                            <a href="{{ route('admin.dashboard') }}"
+                                class="block px-4 py-2 text-sm hover:bg-primary/10
+                  {{ request()->routeIs('admin.dashboard') ? 'bg-primary/20' : '' }}">Dashboard</a>
+                            <a href="{{ route('admin.providers.index') }}"
+                                class="block px-4 py-2 text-sm hover:bg-primary/10
+                  {{ request()->routeIs('admin.providers.*') ? 'bg-primary/20' : '' }}">Providers</a>
+                            <a href="{{ route('admin.services.index') }}"
+                                class="block px-4 py-2 text-sm hover:bg-primary/10
+                  {{ request()->routeIs('admin.services.*') ? 'bg-primary/20' : '' }}">Services</a>
+                            <a href="{{ route('admin.categories.index') }}"
+                                class="block px-4 py-2 text-sm hover:bg-primary/10
+                  {{ request()->routeIs('admin.categories.*') ? 'bg-primary/20' : '' }}">Categories</a>
+                        </div>
+                    </details>
                 @endif
             @endauth
+
 
             {{-- Settings Dropdown (only when authenticated) --}}
             @auth
