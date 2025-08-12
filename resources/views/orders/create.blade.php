@@ -6,17 +6,6 @@
     </x-slot>
 
     <div class="py-6">
-        @if ($errors->any())
-            <div class="mb-4 p-4 rounded-2xl bg-red-50 text-red-800 ring-1 ring-red-200">
-                <strong>Gagal membuat pesanan:</strong>
-                <ul class="mt-2 list-disc pl-5">
-                    @foreach ($errors->all() as $e)
-                        <li>{{ $e }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
-
         @if (session('status'))
             <div class="mb-4 p-4 rounded-2xl bg-yellow-50 text-yellow-800 ring-1 ring-yellow-200">
                 {{ session('status') }}
@@ -24,6 +13,17 @@
         @endif
 
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
+            <div class="mb-4 p-4 rounded-xl bg-white dark:bg-white/5 ring-1 ring-slate-200/60 dark:ring-white/10">
+                <div class="text-sm text-slateText dark:text-slate-300">Saldo Anda</div>
+                <div class="text-2xl font-bold">
+                    Rp {{ number_format(auth()->user()->wallet->balance ?? 0, 2) }}
+                </div>
+            </div>
+            @if ($errors->any())
+                <div class="mb-4 p-4 rounded-xl bg-red-50 text-red-800 ring-1 ring-red-200">
+                    {{ $errors->first() }}
+                </div>
+            @endif
             <div class="p-6 rounded-2xl bg-white dark:bg-white/5 ring-1 ring-slate-200/60 dark:ring-white/10">
 
                 <dl class="grid sm:grid-cols-2 gap-4 text-sm">
@@ -35,17 +35,15 @@
                         <dt class="text-slateText dark:text-slate-300">Markup Provider</dt>
                         <dd class="font-medium">{{ $markup }}%</dd>
                     </div>
-                    <div>
-                        <dt class="text-slateText dark:text-slate-300">Rate / 1000 (USD, setelah markup)</dt>
-                        <dd class="font-medium">$ {{ number_format($rateUSDwithMarkup, 4) }}</dd>
-                    </div>
-                    <div>
-                        <dt class="text-slateText dark:text-slate-300">Rate / 1000 (IDR ≈)</dt>
-                        <dd class="font-semibold">Rp {{ number_format($rateIDRwithMarkup, 2) }} <span
-                                class="text-xs text-slate-500">(@ FX {{ number_format($fx, 0) }})</span></dd>
+                    <div class="sm:col-span-2">
+                        <dt class="text-slateText dark:text-slate-300">Rate / 1000 (efektif)</dt>
+                        <dd class="font-semibold">
+                            Rp <span id="rate1000">{{ number_format($ratePerThousand, 2) }}</span>
+                            <span class="text-xs text-slateText dark:text-slate-400">(multiplier:
+                                {{ $mult }})</span>
+                        </dd>
                     </div>
                 </dl>
-
 
                 <form method="POST" action="{{ route('orders.store', $service) }}" class="mt-6 space-y-4">
                     @csrf
@@ -98,21 +96,25 @@
     @push('scripts')
         <script>
             document.addEventListener('DOMContentLoaded', () => {
-                const qty = document.getElementById('quantity');
-                const est = document.getElementById('estCost');
-                const rateIDR = parseFloat({{ json_encode($rateIDRwithMarkup) }});
-                const minCharge = parseFloat({{ json_encode((float) env('MIN_ORDER_CHARGE_IDR', 0.01)) }});
+                const qtyEl = document.getElementById('quantity');
+                const estEl = document.getElementById('estCost');
+
+                const ratePerThousand = parseFloat({{ json_encode($ratePerThousand) }});
+                const minCharge = parseFloat({{ json_encode($billingMin) }});
 
                 function recalc() {
-                    const q = parseFloat(qty.value || 0);
-                    let cost = rateIDR * (q / 1000);
-                    cost = Math.max(minCharge, Math.round(cost * 100) / 100); // 2 desimal, min charge
-                    est.textContent = cost.toFixed(2);
+                    const q = parseFloat(qtyEl.value || 0);
+                    let cost = ratePerThousand * (q / 1000);
+                    cost = Math.round(cost * 100) / 100; // 2 desimal
+                    if (cost < minCharge) cost = minCharge;
+                    estEl.textContent = cost.toFixed(2);
                 }
-                qty.addEventListener('input', recalc);
+
+                qtyEl.addEventListener('input', recalc);
                 recalc();
             });
         </script>
     @endpush
+
 
 </x-app-layout>
