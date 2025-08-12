@@ -12,17 +12,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('services', function (Blueprint $table) {
-            //
+            $table->decimal('markup_percent_override', 5, 2)->nullable()->after('rate');
         });
     }
-
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::table('services', function (Blueprint $table) {
-            //
+            $table->dropColumn('markup_percent_override');
         });
     }
 };

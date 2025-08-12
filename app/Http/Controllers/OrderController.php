@@ -8,30 +8,22 @@ use Illuminate\Http\Request;
 
 class OrderController extends Controller
 {
-    public function create(Service $service)
+    public function create(\App\Models\Service $service)
     {
-        // 1) Rate dasar USD per 1000 dari provider + markup
-        $baseRateUSD       = (float) $service->rate; // USD / 1000
-        $markup            = (float) ($service->provider->markup_percent ?? 0);
-        $rateUSDwithMarkup = $baseRateUSD * (1 + ($markup / 100));
-
-        // 2) Multiplier & minimal dari ENV (pakai juga di server saat store)
-        $mult = (float) env('BILLING_MULTIPLIER', 1);   // contoh: 16000 untuk IDR
-        $min  = (float) env('BILLING_MIN', 0.01);
-
-        // 3) Rate efektif yang dipakai UI untuk estimasi (HARUS sama dengan server)
-        $ratePerThousand = $rateUSDwithMarkup * $mult; // ini yang dipakai JS di view
+        $ps = app(\App\Services\PricingService::class);
+        $bd = $ps->breakdown($service, $service->min);
 
         return view('orders.create', [
             'service'           => $service,
-            'baseRateUSD'       => $baseRateUSD,
-            'markup'            => $markup,
-            'rateUSDwithMarkup' => $rateUSDwithMarkup,
-            'ratePerThousand'   => $ratePerThousand, // <— dipakai JS & tampilan
-            'billingMin'        => $min,             // <— batas minimal biaya
-            'mult'              => $mult,            // info saja
+            'baseRateUSD'       => $bd['baseRateUSD'],
+            'markup'            => $bd['usedMarkup'],
+            'rateUSDwithMarkup' => $bd['rateUSDwithMarkup'],
+            'ratePerThousand'   => $bd['ratePerThousandLocal'],
+            'billingMin'        => $bd['min'],
+            'mult'              => $bd['mult'],
         ]);
     }
+
 
 
     public function store(Request $request, Service $service)
@@ -41,34 +33,27 @@ class OrderController extends Controller
             'quantity' => ['required', 'integer', 'min:' . $service->min, 'max:' . $service->max],
         ]);
 
-        // Hitung biaya (rate/1000 + markup) + terapkan multiplier & minimal
-        $baseRate = (float) $service->rate;                  // harga per 1000 dari provider
-        $markup   = (float) ($service->provider->markup_percent ?? 0);
-        $rateWithMarkup = $baseRate * (1 + ($markup / 100));
+        $qty = (int) $request->integer('quantity');
 
-        $qty  = (int) $request->integer('quantity');
+        // === Satu-satunya sumber kebenaran harga ===
+        $ps = app(\App\Services\PricingService::class);
+        $bd = $ps->breakdown($service, $qty);
 
-        // multiplier & minimal (ENV)
-        $mult = (float) (env('BILLING_MULTIPLIER', 1));
-        $min  = (float) (env('BILLING_MIN', 0.01));
-
-        $costRaw = $mult * $rateWithMarkup * ($qty / 1000);
-
-        // Bulatkan 2 desimal (karena kolom decimal(12,2)) lalu pastikan ≥ minimal
-        $cost = round($costRaw, 2);
-        if ($cost < $min) {
-            $cost = $min;
-        }
+        $cost           = $bd['cost'];                 // FINAL — gunakan ini saja
+        $baseRate       = $bd['baseRateUSD'];
+        $markup         = $bd['usedMarkup'];
+        $rateWithMarkup = $bd['rateUSDwithMarkup'];    // USD / 1000 (after markup)
 
         $userId = (int) $request->user()->id;
 
         // 1) Potong saldo + buat order pending secara atomik (tanpa call HTTP di dalam transaksi)
         try {
             app(\App\Services\WalletService::class)->debit($userId, $cost, [
-                'reason'     => 'reserve_for_order',
-                'service_id' => $service->id,
-                'qty'        => $qty,
-                'rate_1000'  => $rateWithMarkup,
+                'reason'      => 'reserve_for_order',
+                'service_id'  => $service->id,
+                'qty'         => $qty,
+                'rate_1000_usd'   => $rateWithMarkup,
+                'rate_1000_local' => $bd['ratePerThousandLocal'],
             ]);
         } catch (\Throwable $e) {
             // Saldo tidak cukup atau error wallet lainnya
@@ -77,17 +62,19 @@ class OrderController extends Controller
 
         // Buat order lokal (pending)
         $order = \App\Models\Order::create([
-            'user_id'           => $userId,
-            'service_id'        => $service->id,
-            'link'              => $request->string('link'),
-            'quantity'          => $qty,
-            'status'            => \App\Models\Order::STATUS_PENDING,
-            'provider_order_id' => null,
-            'cost'              => $cost,
-            'meta'              => [
-                'base_rate' => $baseRate,
-                'markup'    => $markup,
-                'rate_1000' => $rateWithMarkup,
+            'user_id'    => $userId,
+            'service_id' => $service->id,
+            'link'       => $request->string('link'),
+            'quantity'   => $qty,
+            'status'     => \App\Models\Order::STATUS_PENDING,
+            'cost'       => $cost, // ← tetap dari $bd
+            'meta'       => [
+                'base_rate_usd'        => $baseRate,
+                'markup_used_percent'  => $markup,
+                'rate_1000_usd'        => $rateWithMarkup,
+                'rate_1000_local'      => $bd['ratePerThousandLocal'],
+                'multiplier'           => $bd['mult'],
+                'min_charge'           => $bd['min'],
             ],
         ]);
 

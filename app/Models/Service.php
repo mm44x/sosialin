@@ -16,9 +16,15 @@ class Service extends Model
         'max',
         'description',
         'active',
-        'meta'
+        'markup_percent_override',
+        'meta',
     ];
-    protected $casts = ['rate' => 'decimal:4', 'active' => 'boolean', 'meta' => 'array'];
+    protected $casts = [
+        'active' => 'boolean',
+        'meta'   => 'array',
+        'rate'   => 'decimal:4',
+    ];
+
 
     public function category()
     {
