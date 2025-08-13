@@ -9,34 +9,53 @@ use Illuminate\Http\Request;
 
 class CategoryController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $rows = Category::with('provider')->orderBy('name')->paginate(20);
-        return view('admin.categories.index', compact('rows'));
+        $rows = Category::with('provider:id,name')
+            ->when($request->filled('search'), function ($q) use ($request) {
+                $s = $request->string('search')->toString();
+                $q->where('name', 'like', "%{$s}%");
+            })
+            ->when($request->filled('provider'), function ($q) use ($request) {
+                $p = $request->input('provider');
+                if (is_numeric($p)) {
+                    $q->where('provider_id', (int) $p);
+                }
+            })
+            ->orderBy('name')
+            ->paginate(20)
+            ->withQueryString();
+
+        return view('admin.categories.index', [
+            'rows'      => $rows,
+            'providers' => Provider::orderBy('name')->get(['id', 'name']),
+            'filters'   => [
+                'search'   => $request->input('search'),
+                'provider' => $request->input('provider'),
+            ],
+        ]);
     }
 
     public function edit(Category $category)
     {
         return view('admin.categories.edit', [
-            'category' => $category,
-            'providers' => Provider::orderBy('name')->get(['id', 'name']),
+            'category' => $category->load('provider:id,name'),
         ]);
     }
 
     public function update(Request $request, Category $category)
     {
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'provider_id' => ['nullable', 'exists:providers,id'],
+            'name'   => ['required', 'string', 'max:255'],
             'active' => ['nullable', 'boolean'],
         ]);
 
         $category->update([
-            'name' => $data['name'],
-            'provider_id' => $data['provider_id'] ?? null,
-            'active' => (bool)($data['active'] ?? false),
+            'name'   => $data['name'],
+            'active' => $request->boolean('active'),
         ]);
 
-        return redirect()->route('admin.categories.index')->with('status', 'Kategori diperbarui.');
+        return redirect()->route('admin.categories.index')
+            ->with('status', "Category #{$category->id} diperbarui.");
     }
 }
