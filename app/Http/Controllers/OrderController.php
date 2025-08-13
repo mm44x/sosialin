@@ -110,7 +110,7 @@ class OrderController extends Controller
     public function store(Request $request, Service $service)
     {
         $request->validate([
-            'link'     => ['required', 'string', 'max:500'],
+            'link'     => ['required', 'string', 'max:500', 'starts_with:http://,https://'],
             'quantity' => ['required', 'integer', 'min:' . $service->min, 'max:' . $service->max],
         ]);
 

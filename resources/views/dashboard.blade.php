@@ -89,7 +89,7 @@
                                                     @case('processing') bg-blue-500/10 text-blue-600 dark:text-blue-400 @break
                                                     @case('completed') bg-green-500/10 text-green-600 dark:text-green-400 @break
                                                     @case('partial') bg-orange-500/10 text-orange-600 dark:text-orange-400 @break
-                                                    @case('canceled')
+                                                    @case('canceled') bg-red-500/10 text-red-600 dark:text-red-400 @break
                                                     @case('error') bg-red-500/10 text-red-600 dark:text-red-400 @break
                                                 @endswitch">
                                                 {{ ucfirst($order->status) }}

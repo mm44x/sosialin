@@ -34,8 +34,8 @@
                                         <span>#{{ $o->id }}</span>
                                         <button type="button"
                                             class="p-1 rounded-lg hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary js-copy-id"
-                                            data-copy="{{ $o->id }}" aria-label="Salin Order ID {{ $o->id }}"
-                                            title="Salin Order ID">
+                                            data-copy="{{ $o->id }}"
+                                            aria-label="Salin Order ID {{ $o->id }}" title="Salin Order ID">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
                                                 viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -48,20 +48,38 @@
                                 <td class="py-2 px-4">{{ $o->service->name ?? '-' }}</td>
                                 <td class="py-2 px-4">{{ $o->quantity }}</td>
                                 <td class="py-2 px-4">Rp {{ number_format($o->cost, 2) }}</td>
+                                @php $st = strtolower($o->status ?? ''); @endphp
                                 <td class="py-2 px-4">
-                                    <span
-                                        class="px-2 py-1 rounded-lg text-xs
-                    @class([
-                        'bg-yellow-100 text-yellow-800' =>
-                            $o->status === 'pending' || $o->status === 'processing',
-                        'bg-green-100 text-green-800' => $o->status === 'completed',
-                        'bg-orange-100 text-orange-800' => $o->status === 'partial',
-                        'bg-red-100 text-red-800' =>
-                            $o->status === 'canceled' || $o->status === 'error',
-                    ])">
-                                        {{ ucfirst($o->status) }}
+                                    <span @class([
+                                        // kelas dasar badge
+                                        'inline-block px-2 py-1 rounded-lg text-xs font-medium ring-1 ring-inset',
+                                        // varian warna per status
+                                        'bg-yellow-100 text-yellow-800 ring-yellow-200' => in_array($st, [
+                                            'pending',
+                                            'processing',
+                                        ]),
+                                        'bg-green-100 text-green-800 ring-green-200' => $st === 'completed',
+                                        'bg-orange-100 text-orange-800 ring-orange-200' => $st === 'partial',
+                                        'bg-red-100 text-red-800 ring-red-200' => in_array($st, [
+                                            'canceled',
+                                            'cancelled',
+                                            'error',
+                                        ]),
+                                        // fallback bila tak cocok (agar tetap terlihat)
+                                        'bg-slate-100 text-slate-800 ring-slate-200' => !in_array($st, [
+                                            'pending',
+                                            'processing',
+                                            'completed',
+                                            'partial',
+                                            'canceled',
+                                            'cancelled',
+                                            'error',
+                                        ]),
+                                    ])>
+                                        {{ ucfirst($st) ?: 'Unknown' }}
                                     </span>
                                 </td>
+
                                 <td class="py-2 px-4">{{ $o->provider_order_id ?? '—' }}</td>
                                 <td class="py-2 px-4">{{ $o->updated_at->diffForHumans() }}</td>
                                 <td class="py-2 px-4">

@@ -114,6 +114,19 @@
                 recalc();
             });
         </script>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const form = document.querySelector('form[action="{{ route('orders.store', $service) }}"]');
+                if (!form) return;
+                form.addEventListener('submit', (e) => {
+                    const btn = form.querySelector('button[type="submit"]');
+                    if (btn) {
+                        btn.disabled = true;
+                        btn.textContent = 'Memproses...';
+                    }
+                });
+            });
+        </script>
     @endpush
 
 
