@@ -24,12 +24,31 @@ class OrderController extends Controller
         return view('orders.index', ['orders' => $orders]);
     }
 
-    public function show(Request $request, \App\Models\Order $order)
+    public function show(\App\Models\Order $order)
     {
-        abort_if($order->user_id !== $request->user()->id, 403);
-        $order->load(['service.provider', 'service.category']);
-        return view('orders.show', ['order' => $order]);
+        // Pastikan hanya pemilik yang bisa melihat
+        abort_if($order->user_id !== auth()->id(), 403);
+
+        $order->load(['service.category', 'service.provider']);
+
+        // Ambil timeline dari meta (array)
+        $timeline = [];
+        $meta = $order->meta ?? [];
+        if (!empty($meta['status_history']) && is_array($meta['status_history'])) {
+            // urutkan dari terbaru ke lama
+            $timeline = collect($meta['status_history'])
+                ->filter(fn($row) => is_array($row))
+                ->sortByDesc(fn($row) => $row['at'] ?? '')
+                ->values()
+                ->all();
+        }
+
+        return view('orders.show', [
+            'order'    => $order,
+            'timeline' => $timeline,
+        ]);
     }
+
 
     public function statusCheck(Request $request, \App\Models\Order $order)
     {
@@ -145,47 +164,6 @@ class OrderController extends Controller
         return \App\Models\Order::STATUS_PROCESSING;
     }
 
-
-    // public function refreshStatus(Request $request, \App\Models\Order $order)
-    // {
-    //     abort_if($order->user_id !== $request->user()->id, 403);
-
-    //     if (!$order->provider_order_id) {
-    //         return back()->with('status', 'Order belum terkirim ke provider atau tidak punya provider_order_id.');
-    //     }
-
-    //     try {
-    //         $client = new \App\Services\Smm\JapClient(
-    //             baseUrl: env('JAP_BASE_URL'),
-    //             apiKey: env('JAP_API_KEY'),
-    //             providerId: $order->service->provider_id
-    //         );
-
-    //         $resp = $client->orderStatus(['order' => (string)$order->provider_order_id]);
-
-    //         $provStatus = strtolower((string)($resp['status'] ?? ''));
-    //         $mapped = $this->mapStatus($provStatus, $resp);
-
-    //         $meta = $order->meta ?? [];
-    //         $meta['last_status_response'] = $resp;
-    //         $meta['status_history'][] = [
-    //             'at'     => now()->toDateTimeString(),
-    //             'status' => $provStatus,
-    //             'remains' => $resp['remains'] ?? null,
-    //         ];
-
-    //         $order->update([
-    //             'status' => $mapped,
-    //             'meta'   => $meta,
-    //         ]);
-
-    //         return back()->with('status', "Status terbaru dari provider: {$provStatus} → {$mapped}");
-    //     } catch (\Throwable $e) {
-    //         return back()->with('status', 'Gagal cek status: ' . $e->getMessage());
-    //     }
-    // }
-
-    /** Map status provider ke status lokal */
     protected function mapStatus(string $provStatus, array $resp): string
     {
         $provStatus = trim($provStatus);
