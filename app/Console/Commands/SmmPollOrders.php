@@ -2,118 +2,183 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
 use App\Models\Order;
-use App\Services\Smm\JapClient;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Arr;
 
 class SmmPollOrders extends Command
 {
-    protected $signature = 'smm:poll-orders 
-                            {--limit=100 : Batas order per eksekusi} 
-                            {--provider= : Filter nama provider (contoh: JAP)} 
-                            {--dry-run : Simulasi saja, tanpa update DB}';
+    protected $signature = 'smm:poll-orders
+        {--limit=100 : Maksimum order yang diproses sekali jalan}
+        {--only= : Filter status awal: pending|processing}
+        {--order-id= : Poll satu order tertentu}
+        {--provider= : Filter provider (ID atau nama persis)}';
 
-    protected $description = 'Polling status order dari provider (JAP) dan update status lokal';
+    protected $description = 'Polling status order dari provider (JAP) dan update status lokal + refund idempoten';
 
     public function handle(): int
     {
         $limit    = (int) $this->option('limit');
-        $provName = $this->option('provider');
-        $dryRun   = (bool) $this->option('dry-run');
+        $only     = $this->option('only');
+        $orderId  = $this->option('order-id');
+        $provOpt  = $this->option('provider');
 
-        $q = Order::query()
-            ->with(['service.provider'])
-            ->whereNotNull('provider_order_id')
-            ->whereIn('status', [
-                Order::STATUS_PENDING,
-                Order::STATUS_PROCESSING,
-            ])
-            ->orderByDesc('id');
-
-        if ($provName) {
-            $q->whereHas('service.provider', fn($qq) => $qq->where('name', $provName));
+        $statuses = ['pending', 'processing'];
+        if ($only && in_array(strtolower($only), ['pending', 'processing'], true)) {
+            $statuses = [strtolower($only)];
         }
 
-        $orders = $q->limit($limit)->get();
+        $q = Order::with(['service.provider'])
+            ->when($orderId, fn($qq) => $qq->where('id', (int) $orderId))
+            ->whereIn('status', $statuses)
+            ->orderBy('id');
+
+        // Filter provider
+        if ($provOpt) {
+            $q->whereHas('service.provider', function ($qq) use ($provOpt) {
+                if (is_numeric($provOpt)) {
+                    $qq->where('id', (int) $provOpt);
+                } else {
+                    $qq->whereRaw('LOWER(name) = ?', [mb_strtolower($provOpt)]);
+                }
+            });
+        }
+
+        $orders = $q->limit(max(1, min($limit, 500)))->get();
+
         if ($orders->isEmpty()) {
-            $this->info('Tidak ada order pending/processing untuk dipoll.');
+            $this->info('Tidak ada order untuk dipoll.');
             return self::SUCCESS;
         }
 
-        $updated = 0;
-        $errors = 0;
+        $this->info("Memproses {$orders->count()} order ...");
 
-        foreach ($orders as $o) {
-            $provider = $o->service->provider;
-            $client = new JapClient(
-                baseUrl: env('JAP_BASE_URL'),
-                apiKey: env('JAP_API_KEY'),
-                providerId: $provider->id
-            );
+        $ok = 0;
+        $err = 0;
+        $completed = 0;
+        $canceled = 0;
+        $partial = 0;
 
+        foreach ($orders as $order) {
             try {
-                $resp = $client->orderStatus(['order' => (string)$o->provider_order_id]);
+                if (!$order->provider_order_id) {
+                    $this->warn("Order #{$order->id} belum punya provider_order_id — lewati.");
+                    $err++;
+                    continue;
+                }
 
+                $service  = $order->service;
+                $provider = $service?->provider;
+
+                $baseUrl = $provider?->base_url ?: env('JAP_BASE_URL');
+                $apiKey  = $provider?->api_key  ?: env('JAP_API_KEY');
+
+                if (empty($baseUrl) || empty($apiKey)) {
+                    $this->warn("Provider kosong kredensial untuk order #{$order->id} — lewati.");
+                    $err++;
+                    continue;
+                }
+
+                $client = new \App\Services\Smm\JapClient(
+                    baseUrl: $baseUrl,
+                    apiKey: $apiKey,
+                    providerId: $provider?->id
+                );
+
+                $resp = $client->orderStatus(['order' => (string)$order->provider_order_id]);
                 $provStatus = strtolower((string)($resp['status'] ?? ''));
-                $mapped = $this->mapStatus($provStatus, $resp);
+                $mapped     = $this->mapProviderStatus($provStatus, $resp);
+                $remains    = isset($resp['remains']) ? (float)$resp['remains'] : null;
 
-                $meta = $o->meta ?? [];
-                $meta['last_status_response'] = $resp;
-                $meta['status_history'][] = [
-                    'at'     => now()->toDateTimeString(),
-                    'status' => $provStatus,
-                    'remains' => $resp['remains'] ?? null,
-                ];
+                DB::transaction(function () use ($order, $mapped, $resp, $remains, &$completed, &$canceled, &$partial) {
+                    /** @var \App\Models\Order $locked */
+                    $locked = Order::where('id', $order->id)->lockForUpdate()->first();
 
-                if (!$dryRun) {
-                    $o->update([
-                        'status' => $mapped,
-                        'meta'   => $meta,
-                    ]);
-                }
+                    $meta = $locked->meta ?? [];
+                    $meta['last_status_response'] = $resp;
+                    $meta['status_history'][] = [
+                        'at'      => now()->toDateTimeString(),
+                        'status'  => strtolower((string)($resp['status'] ?? '')),
+                        'mapped'  => $mapped,
+                        'remains' => $remains,
+                        'source'  => 'poll',
+                    ];
 
-                $this->line("Order #{$o->id} ({$o->provider_order_id}) : {$provStatus} => {$mapped}");
-                $updated++;
+                    // Update status jika berubah
+                    if ($locked->status !== $mapped) {
+                        $locked->status = $mapped;
+                    }
+
+                    // Refund rules — gunakan flag yang sama dengan manual check
+                    if ($mapped === \App\Models\Order::STATUS_CANCELED) {
+                        if (!Arr::get($meta, 'refund_done')) {
+                            app(\App\Services\WalletService::class)->credit($locked->user_id, (float)$locked->cost, 'refund', [
+                                'reason'   => 'canceled_by_provider_poll',
+                                'order_id' => $locked->id,
+                            ]);
+                            $meta['refund_done'] = true;
+                            $canceled++;
+                        }
+                    } elseif ($mapped === \App\Models\Order::STATUS_PARTIAL && $remains !== null) {
+                        if (!Arr::get($meta, 'partial_refund_done')) {
+                            $qty    = max(1, (float)$locked->quantity);
+                            $ratio  = max(0, min(1, $remains / $qty)); // 0..1
+                            $refund = round(((float)$locked->cost) * $ratio, 2);
+                            if ($refund > 0) {
+                                app(\App\Services\WalletService::class)->credit($locked->user_id, $refund, 'refund', [
+                                    'reason'   => 'partial_refund_poll',
+                                    'order_id' => $locked->id,
+                                    'remains'  => $remains,
+                                    'ratio'    => $ratio,
+                                ]);
+                                $meta['partial_refund_done']   = true;
+                                $meta['partial_refund_amount'] = $refund;
+                                $partial++;
+                            }
+                        }
+                    } elseif ($mapped === \App\Models\Order::STATUS_COMPLETED) {
+                        $completed++;
+                    }
+
+                    $locked->meta = $meta;
+                    $locked->save();
+                });
+
+                $ok++;
             } catch (\Throwable $e) {
-                $errors++;
-                $this->error("Order #{$o->id} error: " . $e->getMessage());
-                if (!$dryRun) {
-                    $meta = $o->meta ?? [];
-                    $meta['status_error'][] = ['at' => now()->toDateTimeString(), 'msg' => $e->getMessage()];
-                    $o->update(['meta' => $meta]);
-                }
+                $this->error("Order #{$order->id} gagal dipoll: " . $e->getMessage());
+                $err++;
+                // lanjut ke order berikutnya
             }
         }
 
-        $this->info("Selesai. Updated: {$updated}, Errors: {$errors}" . ($dryRun ? ' [DRY RUN]' : ''));
+        $this->line("OK: {$ok}, Error: {$err}, Completed+: {$completed}, Partial refund+: {$partial}, Canceled refund+: {$canceled}");
         return self::SUCCESS;
     }
 
-    /**
-     * Map status provider ke status lokal.
-     */
-    protected function mapStatus(string $provStatus, array $resp): string
+    /** Pemetaan status provider → status internal. */
+    private function mapProviderStatus(string $provStatus, array $resp): string
     {
-        $provStatus = trim($provStatus);
-
-        // Normalisasi umum dari panel SMM:
-        if ($provStatus === 'completed' || $provStatus === 'success' || ($resp['remains'] ?? null) === 0) {
-            return Order::STATUS_COMPLETED;
+        $provStatus = trim(strtolower($provStatus));
+        if (
+            $provStatus === 'completed' || $provStatus === 'success' ||
+            (($resp['remains'] ?? null) === 0 || ($resp['remains'] ?? null) === '0')
+        ) {
+            return \App\Models\Order::STATUS_COMPLETED;
         }
         if ($provStatus === 'partial') {
-            return Order::STATUS_PARTIAL;
+            return \App\Models\Order::STATUS_PARTIAL;
         }
         if ($provStatus === 'canceled' || $provStatus === 'cancelled') {
-            return Order::STATUS_CANCELED;
+            return \App\Models\Order::STATUS_CANCELED;
         }
         if ($provStatus === 'processing' || $provStatus === 'in progress' || $provStatus === 'inprogress') {
-            return Order::STATUS_PROCESSING;
+            return \App\Models\Order::STATUS_PROCESSING;
         }
         if ($provStatus === 'pending' || $provStatus === '') {
-            return Order::STATUS_PENDING;
+            return \App\Models\Order::STATUS_PENDING;
         }
-
-        // Default: treat as processing jika tak dikenal
-        return Order::STATUS_PROCESSING;
+        return \App\Models\Order::STATUS_PROCESSING;
     }
 }
