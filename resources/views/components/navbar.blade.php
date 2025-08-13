@@ -11,17 +11,12 @@
                     class="px-3 py-2 rounded-xl bg-primary text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary">
                     Dashboard
                 </a>
-                <a href="{{ route('wallet.topup') }}"
-                    class="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600
-            {{ request()->routeIs('wallet.topup') ? 'bg-primary text-white' : 'hover:bg-primary/10' }}
-            focus:outline-none focus:ring-2 focus:ring-primary">
-                    Top-up
-                </a>
-                <a href="{{ route('wallet.transactions') }}"
-                    class="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600
-            {{ request()->routeIs('wallet.transactions') ? 'bg-primary text-white' : 'hover:bg-primary/10' }}
-            focus:outline-none focus:ring-2 focus:ring-primary">
-                    Riwayat
+
+                <a href="{{ route('orders.index') }}"
+                    class="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 hover:bg-primary/10
+              focus:outline-none focus:ring-2 focus:ring-primary
+              {{ request()->routeIs('orders.*') ? 'bg-primary/20' : '' }}">
+                    Riwayat Order
                 </a>
             @else
                 <a href="{{ route('login') }}"

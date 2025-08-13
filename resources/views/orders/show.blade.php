@@ -46,12 +46,12 @@
                 <div class="mt-4 flex gap-3">
                     <a href="{{ route('orders.index') }}"
                         class="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 hover:bg-primary/10">Kembali</a>
-
                     @if ($order->provider_order_id)
-                        <form method="POST" action="{{ route('orders.refresh', $order) }}">
+                        <form method="POST" action="{{ route('orders.status-check', $order) }}" class="inline">
                             @csrf
-                            <button class="px-4 py-2 rounded-xl bg-primary text-white hover:opacity-90">
-                                Cek Status Sekarang
+                            <button
+                                class="px-3 py-2 rounded-xl border dark:border-slate-600 hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary">
+                                Cek status sekarang
                             </button>
                         </form>
                     @endif

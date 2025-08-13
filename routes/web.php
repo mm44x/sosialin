@@ -59,7 +59,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/orders',                [OrderController::class, 'index'])->name('orders.index');
     Route::get('/orders/show/{order}',   [OrderController::class, 'show'])->name('orders.show');
-    Route::post('/orders/{order}/refresh-status', [OrderController::class, 'refreshStatus'])->name('orders.refresh');
+    // Route::post('/orders/{order}/refresh-status', [OrderController::class, 'refreshStatus'])->name('orders.refresh');
+    Route::post('/orders/{order}/status-check', [\App\Http\Controllers\OrderController::class, 'statusCheck'])
+        ->name('orders.status-check')
+        ->middleware('throttle:order-status-check');
 });
 
 

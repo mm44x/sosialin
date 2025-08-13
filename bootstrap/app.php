@@ -27,6 +27,10 @@ return Application::configure(basePath: dirname(__DIR__))
                     Limit::perDay(50)->by($request->user()?->id ?? $request->ip()),
                 ];
             });
+
+            RateLimiter::for('order-status-check', function (Illuminate\Http\Request $request) {
+                return Illuminate\Cache\RateLimiting\Limit::perMinute(10)->by($request->user()?->id ?? $request->ip());
+            });
         }
     )
     ->withMiddleware(function (Middleware $middleware) {

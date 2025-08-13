@@ -7,6 +7,10 @@ use App\Models\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use App\Jobs\OrderSubmitJob;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Log;
+
 
 class OrderController extends Controller
 {
@@ -27,44 +31,156 @@ class OrderController extends Controller
         return view('orders.show', ['order' => $order]);
     }
 
-    public function refreshStatus(Request $request, \App\Models\Order $order)
+    public function statusCheck(Request $request, \App\Models\Order $order)
     {
-        abort_if($order->user_id !== $request->user()->id, 403);
+        // Pemilik order atau admin
+        $user = $request->user();
+        if ($user->role !== 'admin' && (int)$order->user_id !== (int)$user->id) {
+            abort(403);
+        }
 
         if (!$order->provider_order_id) {
-            return back()->with('status', 'Order belum terkirim ke provider atau tidak punya provider_order_id.');
+            return back()->with('status', 'Order belum memiliki ID provider — belum dapat dicek.');
         }
 
         try {
+            // Ambil service + provider (robust)
+            $service  = $order->service()->with('provider')->firstOrFail();
+            $provider = $service->provider;
+
             $client = new \App\Services\Smm\JapClient(
                 baseUrl: env('JAP_BASE_URL'),
                 apiKey: env('JAP_API_KEY'),
-                providerId: $order->service->provider_id
+                providerId: $provider->id
             );
 
             $resp = $client->orderStatus(['order' => (string)$order->provider_order_id]);
 
             $provStatus = strtolower((string)($resp['status'] ?? ''));
-            $mapped = $this->mapStatus($provStatus, $resp);
+            $mapped     = $this->mapProviderStatus($provStatus, $resp);
+            $remains    = isset($resp['remains']) ? (float)$resp['remains'] : null;
 
-            $meta = $order->meta ?? [];
-            $meta['last_status_response'] = $resp;
-            $meta['status_history'][] = [
-                'at'     => now()->toDateTimeString(),
-                'status' => $provStatus,
-                'remains' => $resp['remains'] ?? null,
-            ];
+            // Tulis perubahan + refund secara atomik & idempoten
+            DB::transaction(function () use ($order, $mapped, $resp, $remains) {
+                /** @var \App\Models\Order $locked */
+                $locked = \App\Models\Order::where('id', $order->id)->lockForUpdate()->first();
 
-            $order->update([
-                'status' => $mapped,
-                'meta'   => $meta,
-            ]);
+                $meta = $locked->meta ?? [];
+                $meta['last_status_response'] = $resp;
+                $meta['status_history'][] = [
+                    'at'      => now()->toDateTimeString(),
+                    'status'  => strtolower((string)($resp['status'] ?? '')),
+                    'mapped'  => $mapped,
+                    'remains' => $remains,
+                ];
 
-            return back()->with('status', "Status terbaru dari provider: {$provStatus} → {$mapped}");
+                // Update status jika berubah
+                if ($locked->status !== $mapped) {
+                    $locked->status = $mapped;
+                }
+
+                // Refund rules — SEKALI saja
+                if ($mapped === \App\Models\Order::STATUS_CANCELED) {
+                    if (!Arr::get($meta, 'refund_done')) {
+                        app(\App\Services\WalletService::class)->credit($locked->user_id, (float)$locked->cost, 'refund', [
+                            'reason'   => 'canceled_by_provider_manual_check',
+                            'order_id' => $locked->id,
+                        ]);
+                        $meta['refund_done'] = true;
+                    }
+                } elseif ($mapped === \App\Models\Order::STATUS_PARTIAL && $remains !== null) {
+                    if (!Arr::get($meta, 'partial_refund_done')) {
+                        $qty    = max(1, (float)$locked->quantity);
+                        $ratio  = max(0, min(1, $remains / $qty)); // 0..1
+                        $refund = round(((float)$locked->cost) * $ratio, 2);
+                        if ($refund > 0) {
+                            app(\App\Services\WalletService::class)->credit($locked->user_id, $refund, 'refund', [
+                                'reason'   => 'partial_refund_manual_check',
+                                'order_id' => $locked->id,
+                                'remains'  => $remains,
+                                'ratio'    => $ratio,
+                            ]);
+                            $meta['partial_refund_done']   = true;
+                            $meta['partial_refund_amount'] = $refund;
+                        }
+                    }
+                }
+
+                $locked->meta = $meta;
+                $locked->save();
+            });
+
+            return back()->with('status', "Status diperbarui: " . ucfirst($mapped));
         } catch (\Throwable $e) {
-            return back()->with('status', 'Gagal cek status: ' . $e->getMessage());
+            Log::error('ORDER_STATUS_CHECK_ERROR', ['order_id' => $order->id, 'e' => $e->getMessage()]);
+            return back()->with('status', "Gagal cek status: " . $e->getMessage());
         }
     }
+
+    /** Pemetaan status provider → status internal. */
+    private function mapProviderStatus(string $provStatus, array $resp): string
+    {
+        $provStatus = trim(strtolower($provStatus));
+        if (
+            $provStatus === 'completed' || $provStatus === 'success' ||
+            (($resp['remains'] ?? null) === 0 || ($resp['remains'] ?? null) === '0')
+        ) {
+            return \App\Models\Order::STATUS_COMPLETED;
+        }
+        if ($provStatus === 'partial') {
+            return \App\Models\Order::STATUS_PARTIAL;
+        }
+        if ($provStatus === 'canceled' || $provStatus === 'cancelled') {
+            return \App\Models\Order::STATUS_CANCELED;
+        }
+        if ($provStatus === 'processing' || $provStatus === 'in progress' || $provStatus === 'inprogress') {
+            return \App\Models\Order::STATUS_PROCESSING;
+        }
+        if ($provStatus === 'pending' || $provStatus === '') {
+            return \App\Models\Order::STATUS_PENDING;
+        }
+        return \App\Models\Order::STATUS_PROCESSING;
+    }
+
+
+    // public function refreshStatus(Request $request, \App\Models\Order $order)
+    // {
+    //     abort_if($order->user_id !== $request->user()->id, 403);
+
+    //     if (!$order->provider_order_id) {
+    //         return back()->with('status', 'Order belum terkirim ke provider atau tidak punya provider_order_id.');
+    //     }
+
+    //     try {
+    //         $client = new \App\Services\Smm\JapClient(
+    //             baseUrl: env('JAP_BASE_URL'),
+    //             apiKey: env('JAP_API_KEY'),
+    //             providerId: $order->service->provider_id
+    //         );
+
+    //         $resp = $client->orderStatus(['order' => (string)$order->provider_order_id]);
+
+    //         $provStatus = strtolower((string)($resp['status'] ?? ''));
+    //         $mapped = $this->mapStatus($provStatus, $resp);
+
+    //         $meta = $order->meta ?? [];
+    //         $meta['last_status_response'] = $resp;
+    //         $meta['status_history'][] = [
+    //             'at'     => now()->toDateTimeString(),
+    //             'status' => $provStatus,
+    //             'remains' => $resp['remains'] ?? null,
+    //         ];
+
+    //         $order->update([
+    //             'status' => $mapped,
+    //             'meta'   => $meta,
+    //         ]);
+
+    //         return back()->with('status', "Status terbaru dari provider: {$provStatus} → {$mapped}");
+    //     } catch (\Throwable $e) {
+    //         return back()->with('status', 'Gagal cek status: ' . $e->getMessage());
+    //     }
+    // }
 
     /** Map status provider ke status lokal */
     protected function mapStatus(string $provStatus, array $resp): string
