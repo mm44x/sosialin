@@ -1,100 +1,110 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 dark:text-white leading-tight">Admin — Dashboard</h2>
+        <h2 class="font-semibold text-xl dark:text-white">Admin — Dashboard</h2>
     </x-slot>
 
     <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-            @if (session('status'))
-                <div class="p-4 rounded-xl bg-green-50 text-green-800 ring-1 ring-green-200">
-                    {{ session('status') }}
-                </div>
-            @endif
 
-            {{-- Kartu metrik --}}
-            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {{-- Filter rentang tanggal --}}
+            <form method="GET"
+                class="p-4 rounded-2xl bg-white dark:bg-white/5 ring-1 ring-slate-200/60 dark:ring-white/10 grid gap-3 sm:grid-cols-5">
+                <div class="sm:col-span-2">
+                    <label class="block text-xs text-slateText dark:text-slate-300">Dari</label>
+                    <input type="date" name="from" value="{{ $range['from'] }}"
+                        class="mt-1 w-full px-3 py-2 rounded-xl border bg-white dark:bg-gray-800 dark:text-white dark:border-gray-600">
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="block text-xs text-slateText dark:text-slate-300">Sampai</label>
+                    <input type="date" name="to" value="{{ $range['to'] }}"
+                        class="mt-1 w-full px-3 py-2 rounded-xl border bg-white dark:bg-gray-800 dark:text-white dark:border-gray-600">
+                </div>
+                <div class="flex items-end">
+                    <button class="px-4 py-2 rounded-xl bg-primary text-white hover:opacity-90">Terapkan</button>
+                </div>
+            </form>
+
+            {{-- KPI Cards --}}
+            <div class="grid md:grid-cols-3 gap-4">
                 <div class="p-5 rounded-2xl bg-white dark:bg-white/5 ring-1 ring-slate-200/60 dark:ring-white/10">
-                    <div class="text-slateText dark:text-slate-300 text-sm">Total Pengguna</div>
-                    <div class="text-3xl font-bold mt-1">{{ number_format($stats['users_total']) }}</div>
+                    <div class="text-sm text-slateText dark:text-slate-300">Total User</div>
+                    <div class="mt-1 text-2xl font-bold">{{ number_format($kpi['totalUsers']) }}</div>
                 </div>
                 <div class="p-5 rounded-2xl bg-white dark:bg-white/5 ring-1 ring-slate-200/60 dark:ring-white/10">
-                    <div class="text-slateText dark:text-slate-300 text-sm">Total Saldo Wallet</div>
-                    <div class="text-3xl font-bold mt-1">Rp {{ number_format($stats['wallet_total'], 2) }}</div>
+                    <div class="text-sm text-slateText dark:text-slate-300">Total Saldo Wallet</div>
+                    <div class="mt-1 text-2xl font-bold">Rp {{ number_format($kpi['totalSaldo'], 2) }}</div>
                 </div>
                 <div class="p-5 rounded-2xl bg-white dark:bg-white/5 ring-1 ring-slate-200/60 dark:ring-white/10">
-                    <div class="text-slateText dark:text-slate-300 text-sm">Order Pending/Processing</div>
-                    <div class="text-3xl font-bold mt-1">{{ number_format($stats['orders_pending_now']) }}</div>
-                </div>
-                <div class="p-5 rounded-2xl bg-white dark:bg-white/5 ring-1 ring-slate-200/60 dark:ring-white/10">
-                    <div class="text-slateText dark:text-slate-300 text-sm">Order Hari Ini</div>
-                    <div class="text-3xl font-bold mt-1">{{ number_format($stats['orders_today']) }}</div>
-                </div>
-                <div class="p-5 rounded-2xl bg-white dark:bg-white/5 ring-1 ring-slate-200/60 dark:ring-white/10">
-                    <div class="text-slateText dark:text-slate-300 text-sm">Revenue Hari Ini</div>
-                    <div class="text-3xl font-bold mt-1">Rp {{ number_format($stats['revenue_today'], 2) }}</div>
-                </div>
-                <div class="p-5 rounded-2xl bg-white dark:bg-white/5 ring-1 ring-slate-200/60 dark:ring-white/10">
-                    <div class="text-slateText dark:text-slate-300 text-sm">Completed (24 jam)</div>
-                    <div class="text-3xl font-bold mt-1">{{ number_format($stats['completed_24h']) }}</div>
+                    <div class="text-sm text-slateText dark:text-slate-300">Top-up ({{ $range['from'] }} →
+                        {{ $range['to'] }})</div>
+                    <div class="mt-1 text-2xl font-bold">Rp {{ number_format($kpi['topupSum'], 2) }}</div>
                 </div>
             </div>
 
-            {{-- Daftar singkat --}}
-            <div class="grid gap-6 lg:grid-cols-2">
-                <div class="p-6 rounded-2xl bg-white dark:bg-white/5 ring-1 ring-slate-200/60 dark:ring-white/10">
-                    <div class="flex items-center justify-between mb-3">
-                        <h3 class="font-semibold">Order Terbaru</h3>
-                        <a href="{{ route('orders.index') }}" class="text-sm text-primary hover:underline">Lihat
-                            semua</a>
-                    </div>
+            <div class="grid md:grid-cols-4 gap-4">
+                <div class="p-4 rounded-2xl bg-white dark:bg-white/5 ring-1 ring-slate-200/60 dark:ring-white/10">
+                    <div class="text-sm text-slateText dark:text-slate-300">Pending</div>
+                    <div class="text-xl font-semibold">{{ number_format($kpi['pending']) }}</div>
+                </div>
+                <div class="p-4 rounded-2xl bg-white dark:bg-white/5 ring-1 ring-slate-200/60 dark:ring-white/10">
+                    <div class="text-sm text-slateText dark:text-slate-300">Processing</div>
+                    <div class="text-xl font-semibold">{{ number_format($kpi['processing']) }}</div>
+                </div>
+                <div class="p-4 rounded-2xl bg-white dark:bg-white/5 ring-1 ring-slate-200/60 dark:ring-white/10">
+                    <div class="text-sm text-slateText dark:text-slate-300">Completed</div>
+                    <div class="text-xl font-semibold">{{ number_format($kpi['completed']) }}</div>
+                </div>
+                <div class="p-4 rounded-2xl bg-white dark:bg-white/5 ring-1 ring-slate-200/60 dark:ring-white/10">
+                    <div class="text-sm text-slateText dark:text-slate-300">Partial/Cancel/Error</div>
+                    <div class="text-xl font-semibold">{{ number_format($kpi['error']) }}</div>
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-6">
+                {{-- Orders terbaru --}}
+                <div
+                    class="rounded-2xl bg-white dark:bg-white/5 ring-1 ring-slate-200/60 dark:ring-white/10 overflow-hidden">
+                    <div class="px-4 py-3 border-b border-slate-200/60 dark:border-white/10 font-semibold">10 Order
+                        Terbaru</div>
                     <div class="overflow-x-auto">
                         <table class="min-w-full text-sm">
                             <thead class="text-left">
                                 <tr>
-                                    <th class="py-2 pr-3">ID</th>
-                                    <th class="py-2 pr-3">User</th>
-                                    <th class="py-2 pr-3">Layanan</th>
-                                    <th class="py-2 pr-3">Biaya</th>
-                                    <th class="py-2 pr-3">Status</th>
+                                    <th class="py-2 px-4">#ID</th>
+                                    <th class="py-2 px-4">User</th>
+                                    <th class="py-2 px-4">Layanan</th>
+                                    <th class="py-2 px-4">Qty</th>
+                                    <th class="py-2 px-4">Biaya</th>
+                                    <th class="py-2 px-4">Status</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse($latestOrders as $o)
+                                @forelse($recentOrders as $o)
                                     <tr class="border-t border-slate-200/60 dark:border-white/10">
-                                        <td class="py-2 pr-3">#{{ $o->id }}</td>
-                                        <td class="py-2 pr-3">{{ $o->user->name ?? '—' }}</td>
-                                        <td class="py-2 pr-3">{{ $o->service->name ?? '—' }}</td>
-                                        <td class="py-2 pr-3">Rp {{ number_format($o->cost, 2) }}</td>
-                                        <td class="py-2 pr-3">
-                                            @php $st = strtolower($o->status ?? ''); @endphp
+                                        <td class="py-2 px-4 font-medium">#{{ $o->id }}</td>
+                                        <td class="py-2 px-4">{{ $o->user->name ?? '—' }}</td>
+                                        <td class="py-2 px-4">{{ $o->service->name ?? '—' }}</td>
+                                        <td class="py-2 px-4">{{ $o->quantity }}</td>
+                                        <td class="py-2 px-4">Rp {{ number_format($o->cost, 2) }}</td>
+                                        <td class="py-2 px-4">
                                             <span @class([
                                                 'inline-block px-2 py-1 rounded-lg text-xs font-medium ring-1 ring-inset',
-                                                'bg-yellow-100 text-yellow-800 ring-yellow-200' => in_array($st, [
+                                                'bg-yellow-100 text-yellow-800 ring-yellow-200' => in_array($o->status, [
                                                     'pending',
                                                     'processing',
                                                 ]),
-                                                'bg-green-100 text-green-800 ring-green-200' => $st === 'completed',
-                                                'bg-orange-100 text-orange-800 ring-orange-200' => $st === 'partial',
-                                                'bg-red-100 text-red-800 ring-red-200' => in_array($st, [
+                                                'bg-green-100 text-green-800 ring-green-200' => $o->status === 'completed',
+                                                'bg-orange-100 text-orange-800 ring-orange-200' => $o->status === 'partial',
+                                                'bg-red-100 text-red-800 ring-red-200' => in_array($o->status, [
                                                     'canceled',
-                                                    'cancelled',
                                                     'error',
                                                 ]),
-                                                'bg-slate-100 text-slate-800 ring-slate-200' => !in_array($st, [
-                                                    'pending',
-                                                    'processing',
-                                                    'completed',
-                                                    'partial',
-                                                    'canceled',
-                                                    'cancelled',
-                                                    'error',
-                                                ]),
-                                            ])>{{ ucfirst($st) ?: 'Unknown' }}</span>
+                                            ])>{{ ucfirst($o->status) }}</span>
                                         </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td class="py-3" colspan="5">Belum ada data.</td>
+                                        <td class="py-3 px-4" colspan="6">Belum ada data.</td>
                                     </tr>
                                 @endforelse
                             </tbody>
@@ -102,68 +112,46 @@
                     </div>
                 </div>
 
-                <div class="p-6 rounded-2xl bg-white dark:bg-white/5 ring-1 ring-slate-200/60 dark:ring-white/10">
-                    <div class="flex items-center justify-between mb-3">
-                        <h3 class="font-semibold">Pending / Processing</h3>
-                        <a href="{{ route('orders.index') }}" class="text-sm text-primary hover:underline">Lihat
-                            semua</a>
-                    </div>
+                {{-- API Logs terbaru --}}
+                <div
+                    class="rounded-2xl bg-white dark:bg-white/5 ring-1 ring-slate-200/60 dark:ring-white/10 overflow-hidden">
+                    <div class="px-4 py-3 border-b border-slate-200/60 dark:border-white/10 font-semibold">10 API Logs
+                        Terbaru</div>
                     <div class="overflow-x-auto">
                         <table class="min-w-full text-sm">
                             <thead class="text-left">
                                 <tr>
-                                    <th class="py-2 pr-3">ID</th>
-                                    <th class="py-2 pr-3">User</th>
-                                    <th class="py-2 pr-3">Layanan</th>
-                                    <th class="py-2 pr-3">Updated</th>
+                                    <th class="py-2 px-4">#ID</th>
+                                    <th class="py-2 px-4">Waktu</th>
+                                    <th class="py-2 px-4">Provider</th>
+                                    <th class="py-2 px-4">Endpoint</th>
+                                    <th class="py-2 px-4">Status</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse($pendingOrders as $o)
+                                @forelse($recentApiLogs as $log)
+                                    @php $ok = (int)$log->status_code >= 200 && (int)$log->status_code < 400; @endphp
                                     <tr class="border-t border-slate-200/60 dark:border-white/10">
-                                        <td class="py-2 pr-3">#{{ $o->id }}</td>
-                                        <td class="py-2 pr-3">{{ $o->user->name ?? '—' }}</td>
-                                        <td class="py-2 pr-3">{{ $o->service->name ?? '—' }}</td>
-                                        <td class="py-2 pr-3">{{ $o->updated_at->diffForHumans() }}</td>
+                                        <td class="py-2 px-4 font-medium">#{{ $log->id }}</td>
+                                        <td class="py-2 px-4">{{ $log->created_at->format('d M Y H:i') }}</td>
+                                        <td class="py-2 px-4">{{ $log->provider->name ?? '—' }}</td>
+                                        <td class="py-2 px-4">{{ $log->endpoint }}</td>
+                                        <td class="py-2 px-4">
+                                            <span @class([
+                                                'inline-block px-2 py-1 rounded-lg text-xs font-medium ring-1 ring-inset',
+                                                'bg-green-100 text-green-800 ring-green-200' => $ok,
+                                                'bg-red-100 text-red-800 ring-red-200' => !$ok,
+                                            ])>{{ $log->status_code }}</span>
+                                        </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td class="py-3" colspan="4">Tidak ada order menunggu.</td>
+                                        <td class="py-3 px-4" colspan="5">Belum ada data.</td>
                                     </tr>
                                 @endforelse
                             </tbody>
                         </table>
                     </div>
-                </div>
-            </div>
-
-            <div class="p-6 rounded-2xl bg-white dark:bg-white/5 ring-1 ring-slate-200/60 dark:ring-white/10">
-                <h3 class="font-semibold mb-3">User Terbaru</h3>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-sm">
-                        <thead class="text-left">
-                            <tr>
-                                <th class="py-2 pr-3">ID</th>
-                                <th class="py-2 pr-3">Nama</th>
-                                <th class="py-2 pr-3">Email</th>
-                                <th class="py-2 pr-3">Bergabung</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($latestUsers as $u)
-                                <tr class="border-t border-slate-200/60 dark:border-white/10">
-                                    <td class="py-2 pr-3">{{ $u->id }}</td>
-                                    <td class="py-2 pr-3">{{ $u->name }}</td>
-                                    <td class="py-2 pr-3">{{ $u->email }}</td>
-                                    <td class="py-2 pr-3">{{ $u->created_at->format('d M Y H:i') }}</td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td class="py-3" colspan="4">Belum ada data.</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
                 </div>
             </div>
 
