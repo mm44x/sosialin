@@ -57,6 +57,11 @@
                             <a href="{{ route('admin.categories.index') }}"
                                 class="block px-4 py-2 text-sm hover:bg-primary/10
                   {{ request()->routeIs('admin.categories.*') ? 'bg-primary/20' : '' }}">Categories</a>
+                            <a href="{{ route('admin.api_logs.index') }}"
+                                class="block px-4 py-2 text-sm hover:bg-primary/10
+          {{ request()->routeIs('admin.api_logs.*') ? 'bg-primary/20' : '' }}">API
+                                Logs</a>
+
                         </div>
                     </details>
                 @endif
