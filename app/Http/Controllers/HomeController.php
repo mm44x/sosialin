@@ -17,20 +17,22 @@ class HomeController extends Controller
         $q = \App\Models\Service::query()
             ->with(['category:id,name'])
             ->where('active', true)
-            // Tetap pastikan hanya layanan dari provider aktif yang tampil (internal, tidak ditampilkan ke user)
+            ->where('public_active', true)
             ->whereHas('provider', fn($qq) => $qq->where('active', true))
-            ->when(
-                $request->filled('search'),
-                fn($qq) =>
-                $qq->where('name', 'like', '%' . $request->string('search')->toString() . '%')
-            )
+            ->when($request->filled('search'), function ($qq) use ($request) {
+                $s = $request->string('search')->toString();
+                $qq->where(function ($w) use ($s) {
+                    $w->where('name', 'like', "%{$s}%")
+                        ->orWhere('public_name', 'like', "%{$s}%");
+                });
+            })
             ->when(
                 $request->filled('category_id'),
                 fn($qq) =>
                 $qq->where('category_id', (int) $request->input('category_id'))
             );
 
-        // Sorting yang aman (tanpa expose info provider)
+        // Sorting aman (tanpa expose provider)
         $sort = $request->string('sort', 'name_asc')->toString();
         $q = match ($sort) {
             'name_desc' => $q->orderBy('name', 'desc'),
@@ -44,14 +46,13 @@ class HomeController extends Controller
 
         $rows = $q->paginate($perPage)->withQueryString();
 
-        // Hitung harga jual/1000 tanpa mengirim nilai markup ke view
+        // Hitung harga jual/1000 untuk item halaman ini
         $pricing = app(\App\Services\PricingService::class);
         $computed = [];
         foreach ($rows as $svc) {
             $bd = $pricing->breakdown($svc, 1000);
             $computed[$svc->id] = [
-                'ratePerThousand' => $bd['ratePerThousandLocal'], // hanya harga final
-                // JANGAN kirim usedMarkup/baseRate ke publik
+                'ratePerThousand' => $bd['ratePerThousandLocal'],
             ];
         }
 

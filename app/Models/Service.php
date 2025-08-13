@@ -18,13 +18,29 @@ class Service extends Model
         'active',
         'markup_percent_override',
         'meta',
+        'public_active',
+        'public_name',
+        'public_description',
+        'markup_percent_override',
     ];
     protected $casts = [
         'active' => 'boolean',
         'meta'   => 'array',
         'rate'   => 'decimal:4',
+        'public_active' => 'boolean',
+        'markup_percent_override' => 'decimal:2',
     ];
 
+    // Nama & deskripsi yang aman untuk publik
+    public function getDisplayNameAttribute(): string
+    {
+        return $this->public_name ?: $this->name;
+    }
+
+    public function getDisplayDescriptionAttribute(): ?string
+    {
+        return $this->public_description ?: $this->description;
+    }
 
     public function category()
     {

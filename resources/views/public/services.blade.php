@@ -62,10 +62,10 @@
                             @endphp
                             <tr class="border-t border-slate-200/60 dark:border-white/10">
                                 <td class="py-2 px-4">
-                                    <div class="font-medium">{{ $s->name }}</div>
-                                    @if ($s->description)
-                                        <div class="text-slateText dark:text-slate-300 text-xs mt-1">{{ $s->description }}
-                                        </div>
+                                    <div class="font-medium">{{ $s->display_name }}</div>
+                                    @if ($s->display_description)
+                                        <div class="text-slateText dark:text-slate-300 text-xs mt-1">
+                                            {{ $s->display_description }}</div>
                                     @endif
                                 </td>
                                 <td class="py-2 px-4">{{ $s->category->name ?? '—' }}</td>
