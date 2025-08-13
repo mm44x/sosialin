@@ -28,8 +28,9 @@ return Application::configure(basePath: dirname(__DIR__))
                 ];
             });
 
-            RateLimiter::for('order-status-check', function (Illuminate\Http\Request $request) {
-                return Illuminate\Cache\RateLimiting\Limit::perMinute(10)->by($request->user()?->id ?? $request->ip());
+            RateLimiter::for('order-status-check', function (Request $request) {
+                // Maks 10 cek status/menit per user
+                return Limit::perMinute(10)->by($request->user()?->id ?? $request->ip());
             });
 
             RateLimiter::for('reveal-api-key', function (Request $request) {
@@ -43,8 +44,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => \App\Http\Middleware\EnsureAdmin::class,
         ]);
-
-        // (biarkan konfigurasi middleware lain default Laravel tetap ada)
+        // (biarkan middleware default Laravel)
     })
     ->withSchedule(function (Schedule $schedule) {
         $schedule->command('smm:poll-orders')
