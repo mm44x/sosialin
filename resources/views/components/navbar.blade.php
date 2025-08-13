@@ -60,6 +60,15 @@
                         </div>
                     </details>
                 @endif
+                <div class="flex items-center gap-2">
+                    @php $saldo = optional(auth()->user()->wallet)->balance ?? 0; @endphp
+                    <div class="hidden sm:flex items-center gap-2">
+                        <span
+                            class="px-3 py-1 rounded-xl bg-white/60 dark:bg-white/10 ring-1 ring-slate-200/60 dark:ring-white/10 text-sm">
+                            Saldo: Rp {{ number_format($saldo, 2) }}
+                        </span>
+                    </div>
+                </div>
             @endauth
 
 
