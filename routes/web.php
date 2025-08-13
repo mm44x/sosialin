@@ -8,6 +8,7 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\Admin\ProviderController;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\WalletController;
 
 
 Route::get('/', function () {
@@ -44,13 +45,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/orders/{service}',        [OrderController::class, 'store'])->name('orders.store');
 });
 
-use App\Http\Controllers\WalletController;
-
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/wallet/topup', [WalletController::class, 'create'])->name('wallet.topup');
     Route::post('/wallet/topup', [WalletController::class, 'store'])->name('wallet.topup.store');
     Route::get('/wallet/transactions', [WalletController::class, 'transactions'])->name('wallet.transactions');
 });
+
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/orders',                [OrderController::class, 'index'])->name('orders.index');
+    Route::get('/orders/show/{order}',   [OrderController::class, 'show'])->name('orders.show');
+    Route::post('/orders/{order}/refresh-status', [OrderController::class, 'refreshStatus'])->name('orders.refresh');
+});
+
 
 
 require __DIR__ . '/auth.php';
