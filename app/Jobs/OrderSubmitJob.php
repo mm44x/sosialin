@@ -3,121 +3,167 @@
 namespace App\Jobs;
 
 use App\Models\Order;
-use App\Services\Smm\JapClient;
 use App\Services\WalletService;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 
-class OrderSubmitJob implements ShouldQueue, ShouldBeUnique
+class OrderSubmitJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 3;               // max retry
-    public array $backoff = [5, 15, 30]; // detik
+    /** @var int */
+    public $orderId;
 
-    public function __construct(
-        public int $orderId,
-        public string $idempotencyKey
-    ) {}
+    /** @var string */
+    public $idempotencyKey;
 
-    /** Pastikan satu order tidak diproses dobel di antrian */
-    public function uniqueId(): string
+    /** Jumlah maksimum percobaan (selain percobaan pertama) */
+    public int $tries = 3;
+
+    /** Jeda retry (detik) — eksponensial ringan */
+    public function backoff(): array
     {
-        return 'order-submit-' . $this->orderId;
+        return [10, 30, 90];
     }
 
-    public function handle(WalletService $wallet): void
+    /**
+     * @param  int    $orderId
+     * @param  string $idempotencyKey  UUID yang sudah disimpan di order.meta['idempotency_key']
+     */
+    public function __construct(int $orderId, string $idempotencyKey)
     {
-        $order = Order::with(['service.provider', 'user'])->findOrFail($this->orderId);
+        $this->orderId = $orderId;
+        $this->idempotencyKey = $idempotencyKey;
+    }
 
-        // Idempoten: jika sudah dapat provider_order_id, hentikan.
-        if ($order->provider_order_id) {
+    public function handle(): void
+    {
+        /** @var Order $order */
+        $order = Order::with(['service.provider'])->findOrFail($this->orderId);
+
+        // Idempoten lokal: jika sudah punya provider_order_id, anggap selesai
+        if (!empty($order->provider_order_id)) {
             return;
         }
 
+        // Ambil kredensial dari DB (fallback ke .env)
         $service  = $order->service;
-        $provider = $service->provider;
+        $provider = $service?->provider;
 
-        // Kredensial dari DB, fallback ke .env
-        $baseUrl = $provider->base_url ?: env('JAP_BASE_URL');
-        $apiKey  = $provider->api_key  ?: env('JAP_API_KEY');
+        $baseUrl = $provider?->base_url ?: env('JAP_BASE_URL');
+        $apiKey  = $provider?->api_key  ?: env('JAP_API_KEY');
 
         if (empty($baseUrl) || empty($apiKey)) {
-            // Biarkan job retry & akhirnya refund via failed()
-            throw new \RuntimeException('Provider credentials missing (base_url/api_key).');
+            throw new \RuntimeException('Provider base_url/api_key kosong.');
         }
 
-        $client = new JapClient(
-            baseUrl: $baseUrl,
-            apiKey: $apiKey,
-            providerId: $provider->id
-        );
+        // Payload ke JAP
+        $payload = [
+            'service'  => (string) $service->external_service_id,
+            'link'     => (string) $order->link,
+            'quantity' => (int) $order->quantity,
+            // Catatan: JAP v2 tidak mendukung idempotency header; kita simpan secara lokal di meta
+        ];
 
-        // Tandai sedang diproses + simpan idempotency key
-        $meta = $order->meta ?? [];
-        $meta['idempotency_key'] = $this->idempotencyKey;
-        $order->update([
-            'status' => Order::STATUS_PROCESSING,
-            'meta'   => $meta,
-        ]);
-
-        // Panggil provider — biarkan error melempar untuk trigger retry
         try {
-            $resp = $client->addOrder([
-                'service'  => (string) $service->external_service_id,
-                'link'     => (string) $order->link,
-                'quantity' => (int) $order->quantity,
-            ]);
+            $client = new \App\Services\Smm\JapClient(
+                baseUrl: $baseUrl,
+                apiKey: $apiKey,
+                providerId: $provider?->id
+            );
+
+            $resp = $client->addOrder($payload);
+
+            // Ambil ID order dari berbagai kemungkinan field
+            $provId = $resp['order'] ?? $resp['order_id'] ?? $resp['id'] ?? null;
+            if (!$provId) {
+                // Tidak ada ID — biar dipicu retry
+                throw new \RuntimeException('Provider tidak mengembalikan order id.');
+            }
+
+            // Update sukses (PROCESSING) + simpan meta
+            DB::transaction(function () use ($order, $resp, $provId) {
+                /** @var Order $locked */
+                $locked = Order::where('id', $order->id)->lockForUpdate()->first();
+
+                // Jika pada saat bersamaan sudah terisi (race), hormati yang ada
+                if (!empty($locked->provider_order_id)) {
+                    return;
+                }
+
+                $meta = $locked->meta ?? [];
+                $meta['last_submit_response'] = $resp;
+                $meta['attempts'] = (int) (($meta['attempts'] ?? 0) + 1);
+
+                $locked->update([
+                    'provider_order_id' => (string) $provId,
+                    'status'            => Order::STATUS_PROCESSING,
+                    'meta'              => $meta,
+                ]);
+            });
         } catch (\Throwable $e) {
-            throw new \RuntimeException('Add order failed: ' . $e->getMessage(), previous: $e);
-        }
+            // Simpan error terakhir untuk observabilitas
+            try {
+                DB::transaction(function () use ($order, $e) {
+                    /** @var Order $locked */
+                    $locked = Order::where('id', $order->id)->lockForUpdate()->first();
+                    $meta = $locked->meta ?? [];
+                    $meta['last_submit_error'] = $e->getMessage();
+                    $meta['attempts'] = (int) (($meta['attempts'] ?? 0) + 1);
+                    $locked->meta = $meta;
+                    $locked->save();
+                });
+            } catch (\Throwable) {
+                // abaikan error penyimpanan meta
+            }
 
-        $provId = $resp['order'] ?? $resp['order_id'] ?? $resp['id'] ?? null;
-        if (!$provId) {
-            // Trigger retry dengan melempar exception
-            throw new \RuntimeException('No provider order id in response');
+            // Lempar lagi supaya queue worker melakukan retry sesuai $tries/$backoff
+            throw $e;
         }
-
-        // Sukses
-        $order->update([
-            'provider_order_id' => (string) $provId,
-            'status'            => Order::STATUS_PROCESSING,
-            'meta'              => array_merge($order->meta ?? [], [
-                'provider_response' => $resp,
-                'used_base_url'     => $baseUrl, // jejak audit
-            ]),
-        ]);
     }
 
-    public function failed(\Throwable $e): void
+    /**
+     * Dipanggil Laravel saat job melebihi jumlah percobaan.
+     * Di sini kita lakukan REFUND sekali saja + tandai order ERROR.
+     */
+    public function failed(\Throwable $exception): void
     {
-        // Semua percobaan gagal → refund jika belum ada provider_order_id
-        $order = Order::with(['service.provider', 'user'])->find($this->orderId);
-        if (!$order || $order->provider_order_id) return;
+        try {
+            DB::transaction(function () use ($exception) {
+                /** @var Order $order */
+                $order = Order::where('id', $this->orderId)->lockForUpdate()->first();
+                if (!$order) return;
 
-        $wallet = app(WalletService::class);
+                $meta = $order->meta ?? [];
 
-        // Hindari refund ganda
-        $meta = $order->meta ?? [];
-        if (Arr::get($meta, 'refund_done')) return;
+                // Refund sekali saja
+                if (empty($meta['submit_refund_done'])) {
+                    app(WalletService::class)->credit($order->user_id, (float)$order->cost, 'refund', [
+                        'reason'   => 'submit_failed_after_retries',
+                        'order_id' => $order->id,
+                        'error'    => $exception->getMessage(),
+                        'attempts' => (int)($meta['attempts'] ?? 0),
+                    ]);
+                    $meta['submit_refund_done'] = true;
+                }
 
-        $wallet->credit($order->user_id, (float) $order->cost, 'refund', [
-            'reason'   => 'order_submit_failed',
-            'order_id' => $order->id,
-            'error'    => $e->getMessage(),
-        ]);
+                $meta['submit_failed_at'] = now()->toDateTimeString();
+                $meta['submit_failed_error'] = $exception->getMessage();
 
-        $meta['refund_done']       = true;
-        $meta['submit_failed_msg'] = $e->getMessage();
+                // Tandai status ERROR jika belum selesai
+                if (empty($order->provider_order_id)) {
+                    $order->status = Order::STATUS_ERROR;
+                }
 
-        $order->update([
-            'status' => Order::STATUS_ERROR,
-            'meta'   => $meta,
-        ]);
+                $order->meta = $meta;
+                $order->save();
+            });
+        } catch (\Throwable) {
+            // Jangan biarkan failed() melempar error baru
+        }
     }
 }
