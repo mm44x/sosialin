@@ -30,14 +30,19 @@
                         @forelse($orders as $o)
                             <tr class="border-t border-slate-200/60 dark:border-white/10">
                                 <td class="py-2 px-4 font-medium">
-                                    #{{ $o->id }}
-                                    <button type="button"
-                                        class="ml-2 inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-xs
-           border-slate-300 dark:border-slate-600 hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary js-copy-id"
-                                        data-copy="{{ $o->id }}" aria-label="Salin Order ID {{ $o->id }}"
-                                        title="Salin Order ID">
-                                        Copy
-                                    </button>
+                                    <div class="flex items-center gap-2">
+                                        <span>#{{ $o->id }}</span>
+                                        <button type="button"
+                                            class="p-1 rounded-lg hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary js-copy-id"
+                                            data-copy="{{ $o->id }}" aria-label="Salin Order ID {{ $o->id }}"
+                                            title="Salin Order ID">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                                viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                            </svg>
+                                        </button>
+                                    </div>
                                 </td>
 
                                 <td class="py-2 px-4">{{ $o->service->name ?? '-' }}</td>
@@ -106,11 +111,20 @@
                                     }
 
                                     // Umpan-balik UI
-                                    const old = btn.textContent.trim();
-                                    btn.textContent = ok ? 'Disalin!' : 'Gagal';
+                                    const old = btn.innerHTML;
                                     btn.disabled = true;
+                                    if (ok) {
+                                        btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+</svg>`;
+                                    } else {
+                                        btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+</svg>`;
+                                    }
+
                                     setTimeout(() => {
-                                        btn.textContent = old;
+                                        btn.innerHTML = old;
                                         btn.disabled = false;
                                     }, 1200);
                                 });
