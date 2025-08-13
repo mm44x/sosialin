@@ -37,7 +37,12 @@ Route::middleware(['auth', 'verified', 'admin'])
     ->group(function () {
         // Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-        Route::resource('providers', ProviderController::class)->only(['index', 'edit', 'update']);
+        Route::get('/providers', [ProviderController::class, 'index'])->name('providers.index');
+        Route::get('/providers/{provider}/edit', [ProviderController::class, 'edit'])->name('providers.edit');
+        Route::put('/providers/{provider}', [ProviderController::class, 'update'])->name('providers.update');
+        Route::post('/providers/{provider}/reveal-key', [ProviderController::class, 'revealKey'])
+            ->name('providers.reveal-key')
+            ->middleware('throttle:reveal-api-key');
         Route::resource('services', ServiceController::class)->only(['index', 'edit', 'update']);
         Route::resource('categories', CategoryController::class)->only(['index', 'edit', 'update']);
         Route::get('/api-logs', [ApiLogController::class, 'index'])->name('api_logs.index');

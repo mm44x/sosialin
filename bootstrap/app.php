@@ -31,6 +31,11 @@ return Application::configure(basePath: dirname(__DIR__))
             RateLimiter::for('order-status-check', function (Illuminate\Http\Request $request) {
                 return Illuminate\Cache\RateLimiting\Limit::perMinute(10)->by($request->user()?->id ?? $request->ip());
             });
+
+            RateLimiter::for('reveal-api-key', function (Request $request) {
+                // Maks 10 kali/menit per admin/user
+                return Limit::perMinute(10)->by($request->user()?->id ?? $request->ip());
+            });
         }
     )
     ->withMiddleware(function (Middleware $middleware) {
