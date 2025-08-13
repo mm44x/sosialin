@@ -69,7 +69,9 @@
                             @php $ok = (int)$log->status_code >= 200 && (int)$log->status_code < 400; @endphp
                             <tr class="border-t border-slate-200/60 dark:border-white/10">
                                 <td class="py-2 px-4 font-medium">#{{ $log->id }}</td>
-                                <td class="py-2 px-4">{{ $log->created_at->format('d M Y H:i:s') }}</td>
+                                <td class="py-2 px-4">
+                                    {{ $log->created_at ? $log->created_at->format('d M Y H:i:s') : '—' }}
+                                </td>
                                 <td class="py-2 px-4">{{ $log->provider->name ?? '—' }}</td>
                                 <td class="py-2 px-4">{{ $log->endpoint }}</td>
                                 <td class="py-2 px-4">
@@ -81,9 +83,10 @@
                                 </td>
                                 <td class="py-2 px-4">{{ number_format((int) $log->duration_ms) }}</td>
                                 <td class="py-2 px-4">
-                                    {{-- Detail akan dibuat di step berikutnya --}}
-                                    <span class="text-slate-400 text-xs">Detail (next)</span>
+                                    <a href="{{ route('admin.api-logs.show', $log) }}"
+                                        class="px-3 py-2 rounded-xl border dark:border-slate-600 hover:bg-primary/10">Detail</a>
                                 </td>
+
                             </tr>
                         @empty
                             <tr>

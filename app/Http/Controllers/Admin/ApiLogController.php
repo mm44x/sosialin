@@ -7,6 +7,8 @@ use App\Models\ApiLog;
 use App\Models\Provider;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
+
 
 class ApiLogController extends Controller
 {
@@ -60,6 +62,39 @@ class ApiLogController extends Controller
                 'endpoint'    => $request->input('endpoint'),
                 'status_code' => $request->input('status_code'),
             ],
+        ]);
+    }
+
+    public function show(Request $request, \App\Models\ApiLog $log)
+    {
+        $log->load('provider:id,name');
+
+        // Request sudah dicast array di model. Jika bukan array, coba decode.
+        $reqData = $log->request;
+        if (!is_array($reqData) && is_string($reqData)) {
+            $decoded = json_decode($reqData, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $reqData = $decoded;
+            }
+        }
+
+        // Response bisa sangat besar. Siapkan versi parsed & raw + preview.
+        $respRaw = (string) ($log->response ?? '');
+        $respArr = json_decode($respRaw, true);
+        $respIsJson = is_array($respArr);
+
+        $limit = 10000; // 10KB preview
+        $respPreview = mb_substr($respRaw, 0, $limit, 'UTF-8');
+        $respTruncated = mb_strlen($respRaw, 'UTF-8') > $limit;
+
+        return view('admin.api_logs.show', [
+            'log'           => $log,
+            'reqData'       => $reqData,
+            'respRaw'       => $respRaw,
+            'respArr'       => $respArr,
+            'respIsJson'    => $respIsJson,
+            'respPreview'   => $respPreview,
+            'respTruncated' => $respTruncated,
         ]);
     }
 }
