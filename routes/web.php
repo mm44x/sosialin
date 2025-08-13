@@ -45,8 +45,8 @@ Route::middleware(['auth', 'verified', 'admin'])
             ->middleware('throttle:reveal-api-key');
         Route::resource('services', ServiceController::class)->only(['index', 'edit', 'update']);
         Route::resource('categories', CategoryController::class)->only(['index', 'edit', 'update']);
-        Route::get('/api-logs', [ApiLogController::class, 'index'])->name('api_logs.index');
-        Route::get('/api-logs/{api_log}', [ApiLogController::class, 'show'])->name('api_logs.show');
+        Route::get('/api-logs', [ApiLogController::class, 'index'])->name('api-logs.index');
+        Route::get('/api-logs/{api_log}', [ApiLogController::class, 'show'])->name('api-logs.show');
     });
 
 
