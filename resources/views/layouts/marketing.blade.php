@@ -26,7 +26,7 @@
             </div>
         </div>
     </footer>
-    {{-- @stack('scripts') --}}
+    @stack('scripts')
 </body>
 
 </html>
