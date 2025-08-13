@@ -44,15 +44,18 @@ class OrderController extends Controller
         }
 
         try {
-            // Ambil service + provider (robust)
             $service  = $order->service()->with('provider')->firstOrFail();
             $provider = $service->provider;
 
+            $baseUrl = $provider->base_url ?: env('JAP_BASE_URL');
+            $apiKey  = $provider->api_key  ?: env('JAP_API_KEY');
+
             $client = new \App\Services\Smm\JapClient(
-                baseUrl: env('JAP_BASE_URL'),
-                apiKey: env('JAP_API_KEY'),
+                baseUrl: $baseUrl,
+                apiKey: $apiKey,
                 providerId: $provider->id
             );
+
 
             $resp = $client->orderStatus(['order' => (string)$order->provider_order_id]);
 
