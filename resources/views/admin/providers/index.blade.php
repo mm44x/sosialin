@@ -5,13 +5,6 @@
 
     <div class="py-6">
         <div class="max-w-6xl mx-auto sm:px-6 lg:px-8 space-y-4">
-
-            @if (session('status'))
-                <div class="p-3 rounded-xl bg-green-50 text-green-800 ring-1 ring-green-200">
-                    {{ session('status') }}
-                </div>
-            @endif
-
             <form method="GET" class="flex gap-2">
                 <input name="search" value="{{ $search }}" placeholder="Cari nama provider..."
                     class="px-3 py-2 rounded-xl border bg-white dark:bg-gray-800 dark:text-white dark:border-gray-600">

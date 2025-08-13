@@ -7,12 +7,6 @@
 
     <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-            @if (session('status'))
-                <div class="mb-4 p-4 rounded-xl bg-green-500/10 text-green-600 ring-1 ring-inset ring-green-500/20">
-                    {{ session('status') }}
-                </div>
-            @endif
-
             {{-- Summary Cards --}}
             <div class="grid md:grid-cols-3 gap-6">
                 <div

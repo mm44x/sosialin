@@ -6,12 +6,6 @@
     </x-slot>
 
     <div class="py-6">
-        @if (session('status'))
-            <div class="mb-4 p-4 rounded-2xl bg-yellow-50 text-yellow-800 ring-1 ring-yellow-200">
-                {{ session('status') }}
-            </div>
-        @endif
-
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
             <div class="mb-4 p-4 rounded-xl bg-white dark:bg-white/5 ring-1 ring-slate-200/60 dark:ring-white/10">
                 <div class="text-sm text-slateText dark:text-slate-300">Saldo Anda</div>

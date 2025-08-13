@@ -5,13 +5,6 @@
 
     <div class="py-6">
         <div class="max-w-6xl mx-auto sm:px-6 lg:px-8 space-y-4">
-
-            @if (session('status'))
-                <div class="p-3 rounded-xl bg-green-50 text-green-800 ring-1 ring-green-200">
-                    {{ session('status') }}
-                </div>
-            @endif
-
             <form method="GET"
                 class="p-4 rounded-2xl bg-white dark:bg-white/5 ring-1 ring-slate-200/60 dark:ring-white/10 grid gap-3 md:grid-cols-4">
                 {{-- Cari nama --}}

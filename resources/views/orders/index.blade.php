@@ -5,12 +5,6 @@
 
     <div class="py-6">
         <div class="max-w-6xl mx-auto sm:px-6 lg:px-8">
-            @if (session('status'))
-                <div class="mb-4 p-4 rounded-xl bg-green-50 text-green-800 ring-1 ring-green-200">
-                    {{ session('status') }}
-                </div>
-            @endif
-
             <div
                 class="overflow-x-auto rounded-2xl bg-white dark:bg-white/5 ring-1 ring-slate-200/60 dark:ring-white/10">
                 <table class="min-w-full text-sm">

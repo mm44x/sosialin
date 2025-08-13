@@ -32,7 +32,7 @@
 </head>
 
 <body class="font-sans antialiased bg-bg text-text dark:bg-bgDark dark:text-slate-100 transition-colors duration-300">
-
+    <x-toast />
 
     <div class="min-h-screen">
         <x-navbar />

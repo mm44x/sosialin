@@ -6,11 +6,6 @@
 
     <div class="py-6">
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8 space-y-4">
-            @if (session('status'))
-                <div class="p-4 rounded-2xl bg-green-50 text-green-800 ring-1 ring-green-200">{{ session('status') }}
-                </div>
-            @endif
-
             <div class="p-6 rounded-2xl bg-white dark:bg-white/5 ring-1 ring-slate-200/60 dark:ring-white/10">
                 <dl class="grid sm:grid-cols-2 gap-4 text-sm">
                     <div>
