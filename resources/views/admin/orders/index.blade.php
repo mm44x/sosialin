@@ -7,47 +7,68 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
 
             {{-- Filter bar --}}
-            <form method="GET" class="mb-4 grid md:grid-cols-4 gap-3 md:items-end">
-                @php
-                    $ctl =
-                        'mt-1 w-full h-11 px-3 rounded-xl border bg-white dark:bg-slate-800 dark:text-white dark:border-slate-600';
-                    $btn =
-                        'h-11 inline-flex items-center px-4 rounded-xl border dark:border-slate-600 hover:bg-primary/10';
-                    $btnPrimary =
-                        'h-11 inline-flex items-center px-4 rounded-xl bg-primary text-white hover:opacity-90';
-                @endphp
-
-                <div class="md:col-span-2">
+            <form method="GET" class="mb-4 space-y-3">
+                {{-- Row 1: Search full width --}}
+                <div>
                     <label class="block text-sm font-medium">Cari (ID/Provider ID/Link/Email/Nama)</label>
-                    <input type="text" name="q" value="{{ $filters['q'] ?? '' }}" class="{{ $ctl }}"
+                    <input type="text" name="q" value="{{ $filters['q'] ?? '' }}"
+                        class="mt-1 h-10 w-full px-3 py-2 rounded-xl border
+                   bg-white dark:bg-slate-800 dark:text-white dark:border-slate-600"
                         placeholder="mis. 1024 atau user@example.com">
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium">Status</label>
-                    <select name="status" class="{{ $ctl }}">
+                {{-- Row 2: Status + Per halaman + Actions (right aligned) --}}
+                <div class="flex flex-wrap md:flex-nowrap items-end gap-3">
+                    {{-- Status --}}
+                    <div class="min-w-[200px]">
+                        <label class="block text-sm font-medium">Status</label>
                         @php $st = $filters['status'] ?? ''; @endphp
-                        <option value="">Semua</option>
-                        @foreach (['pending', 'processing', 'completed', 'partial', 'canceled', 'error'] as $opt)
-                            <option value="{{ $opt }}" @selected($st === $opt)>{{ ucfirst($opt) }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
+                        <select name="status"
+                            class="mt-1 h-10 w-full px-3 py-2 rounded-xl border
+                       bg-white dark:bg-slate-800 dark:text-white dark:border-slate-600">
+                            <option value="">Semua</option>
+                            @foreach (['pending', 'processing', 'completed', 'partial', 'canceled', 'error'] as $opt)
+                                <option value="{{ $opt }}" @selected($st === $opt)>{{ ucfirst($opt) }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
 
-                <div class="flex gap-2 md:justify-end self-end">
-                    <button class="{{ $btnPrimary }}" type="submit">Terapkan</button>
+                    {{-- Per halaman (narrow) --}}
+                    <div class="w-[110px]">
+                        <label class="block text-sm font-medium">Per halaman</label>
+                        @php $pp = (int)($filters['per_page'] ?? 20); @endphp
+                        <select name="per_page"
+                            class="mt-1 h-10 w-full px-3 py-2 rounded-xl border
+                       bg-white dark:bg-slate-800 dark:text-white dark:border-slate-600">
+                            @foreach ([10, 20, 30, 50] as $opt)
+                                <option value="{{ $opt }}" @selected($pp === $opt)>{{ $opt }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
 
-                    <a href="{{ route('admin.orders.index') }}" class="{{ $btn }}">Reset</a>
+                    {{-- Spacer pushes actions to the right --}}
+                    <div class="flex-1"></div>
 
-                    <a href="{{ route('admin.orders.export', request()->query()) }}" class="{{ $btn }}"
-                        title="Ekspor CSV sesuai filter saat ini">
-                        Export
-                    </a>
+                    {{-- Actions (always aligned) --}}
+                    <div class="flex gap-2">
+                        <button class="h-10 px-4 rounded-xl bg-primary text-white hover:opacity-90">
+                            Terapkan
+                        </button>
+                        <a href="{{ route('admin.orders.index') }}"
+                            class="h-10 px-4 rounded-xl border dark:border-slate-600 hover:bg-primary/10
+                      flex items-center justify-center">
+                            Reset
+                        </a>
+                        <a href="{{ route('admin.orders.export', request()->query()) }}"
+                            class="h-10 px-4 rounded-xl border dark:border-slate-600 hover:bg-primary/10
+                      flex items-center justify-center">
+                            Export CSV
+                        </a>
+                    </div>
                 </div>
             </form>
-
-
 
             <div
                 class="overflow-x-auto rounded-2xl bg-white dark:bg-white/5 ring-1 ring-slate-200/60 dark:ring-white/10">
