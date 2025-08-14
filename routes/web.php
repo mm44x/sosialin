@@ -60,15 +60,17 @@ Route::middleware(['auth', 'verified', 'admin'])
         // Users (Admin)
         // Route::get('/users',            [\App\Http\Controllers\Admin\UserController::class, 'index'])->name('users.index');
         // Route::get('/users/export',     [\App\Http\Controllers\Admin\UserController::class, 'export'])->name('users.export');
-        // Route::get('/users/{user}',     [\App\Http\Controllers\Admin\UserController::class, 'show'])->name('users.show');
+        // Route::get('/users/{user}',     [\App\Http\Controllers\Admin\AdminUserController::class, 'show'])->name('users.show');
         // USERS (Admin)
         // Admin — Users
-        Route::get('/users',                [\App\Http\Controllers\Admin\UserController::class, 'index'])->name('users.index');
-        Route::get('/users/export',        [\App\Http\Controllers\Admin\UserController::class, 'export'])->name('users.export');
-        Route::get('/users/{user}',        [\App\Http\Controllers\Admin\UserController::class, 'show'])->name('users.show');
-        Route::get('/users/{user}/edit',   [\App\Http\Controllers\Admin\UserController::class, 'edit'])->name('users.edit');
-        Route::put('/users/{user}',        [\App\Http\Controllers\Admin\UserController::class, 'update'])->name('users.update');
-        Route::delete('/users/{user}',     [\App\Http\Controllers\Admin\UserController::class, 'destroy'])->name('users.destroy');
+        Route::get('/users',                [AdminUserController::class, 'index'])->name('users.index');
+        Route::get('/users/export',        [AdminUserController::class, 'export'])->name('users.export');
+        Route::get('/users/{user}',        [AdminUserController::class, 'show'])->name('users.show');
+        Route::get('/users/{user}/edit',   [AdminUserController::class, 'edit'])->name('users.edit');
+        Route::put('/users/{user}',        [AdminUserController::class, 'update'])->name('users.update');
+        Route::delete('/users/{user}',     [AdminUserController::class, 'destroy'])->name('users.destroy');
+        Route::post('/users/{user}/toggle-active', [AdminUserController::class, 'toggleActive'])
+            ->name('users.toggle-active');
 
         // Providers
         Route::get('/providers',                 [ProviderController::class, 'index'])->name('providers.index');

@@ -5,16 +5,6 @@
 
     <div class="py-6">
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
-            @if ($errors->any())
-                <div class="mb-4 p-3 rounded-2xl bg-red-50 text-red-800 ring-1 ring-red-200">
-                    <ul class="list-disc list-inside text-sm">
-                        @foreach ($errors->all() as $e)
-                            <li>{{ $e }}</li>
-                        @endforeach
-                    </ul>
-                </div>
-            @endif
-
             <div class="p-6 rounded-2xl bg-white dark:bg-white/5 ring-1 ring-slate-200/60 dark:ring-white/10">
                 <form method="POST" action="{{ route('admin.users.update', $user) }}" class="space-y-4">
                     @csrf @method('PUT')

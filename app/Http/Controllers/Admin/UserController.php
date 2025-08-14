@@ -14,11 +14,13 @@ class UserController extends Controller
 {
     public function index(Request $request)
     {
-        $q       = trim((string) $request->input('q', ''));            // cari ID/Email/Nama
-        $sort    = $request->string('sort', 'id_desc')->toString();    // id_desc|id_asc|name_asc|balance_desc|orders_desc
-        $perPage = max(10, min(50, (int) $request->integer('per_page', 20)));
+        $q        = trim((string) $request->input('q', ''));          // cari ID/Email/Nama
+        $sort     = $request->string('sort', 'id_desc')->toString();  // id_desc|id_asc|name_asc|balance_desc|orders_desc
+        $roleF    = $request->string('role', '')->toString();         // ''|user|admin
+        $statusF  = $request->string('status', '')->toString();       // ''|active|banned
+        $perPage  = max(10, min(50, (int) $request->integer('per_page', 20)));
 
-        $builder = User::query()
+        $builder = \App\Models\User::query()
             ->select('users.*')
             ->with(['wallet:id,user_id,balance'])
             ->withCount('orders')
@@ -30,6 +32,10 @@ class UserController extends Controller
                     $w->orWhere('users.email', 'like', "%{$q}%")
                         ->orWhere('users.name',  'like', "%{$q}%");
                 });
+            })
+            ->when($roleF !== '', fn($qq) => $qq->where('users.role', $roleF))
+            ->when($statusF !== '', function ($qq) use ($statusF) {
+                $qq->where('users.is_active', $statusF === 'active' ? 1 : 0);
             });
 
         switch ($sort) {
@@ -59,11 +65,41 @@ class UserController extends Controller
         return view('admin.users.index', [
             'rows'    => $rows,
             'filters' => [
-                'q'        => $q,
-                'sort'     => $sort,
-                'per_page' => $perPage,
+                'q'         => $q,
+                'sort'      => $sort,
+                'per_page'  => $perPage,
+                'role'      => $roleF,
+                'status'    => $statusF,
             ],
         ]);
+    }
+
+    public function toggleActive(Request $request, \App\Models\User $user)
+    {
+        $me = $request->user();
+
+        // Tidak boleh ban diri sendiri lewat tombol cepat
+        if ((int)$user->id === (int)$me->id) {
+            return back()->with('status', 'Tidak dapat menonaktifkan akun Anda sendiri.');
+        }
+
+        $targetActive = !$user->is_active; // toggle
+
+        // Jika akan MENONAKTIFKAN admin aktif → jangan jika ini admin aktif terakhir
+        if ($user->role === 'admin' && $user->is_active == 1 && $targetActive === false) {
+            $otherActiveAdmins = \App\Models\User::where('role', 'admin')
+                ->where('is_active', 1)
+                ->where('id', '!=', $user->id)
+                ->count();
+            if ($otherActiveAdmins === 0) {
+                return back()->with('status', 'Tidak dapat menonaktifkan admin aktif terakhir.');
+            }
+        }
+
+        $user->is_active = $targetActive ? 1 : 0;
+        $user->save();
+
+        return back()->with('status', $targetActive ? 'User diaktifkan.' : 'User dinonaktifkan (banned).');
     }
 
     public function show(User $user)
@@ -104,60 +140,64 @@ class UserController extends Controller
 
     public function update(Request $request, \App\Models\User $user)
     {
-        $me = $request->user();
+        $isSelf = (int)$request->user()->id === (int)$user->id;
+
+        // Hitung admin aktif
+        $activeAdminCount = \App\Models\User::where('role', 'admin')
+            ->where('is_active', 1)
+            ->count();
+
+        $isLastActiveAdmin = $user->role === 'admin' && $activeAdminCount <= 1;
 
         $data = $request->validate([
-            'name'                  => ['required', 'string', 'max:255'],
-            'email'                 => ['required', 'email', 'max:255', 'unique:users,email,' . $user->id],
-            'role'                  => ['required', 'in:user,admin'],
-            'is_active'             => ['nullable', 'boolean'],
-            'new_password'          => ['nullable', 'string', 'min:8'],
-            'new_password_confirm'  => ['nullable', 'same:new_password'],
+            'name'      => ['required', 'string', 'max:255'],
+            'email'     => ['required', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            // BUKAN required: role boleh kosong (mis. select disabled)
+            'role'      => ['nullable', 'in:user,admin'],
+            // Checkbox boleh tidak ada di payload
+            'is_active' => ['sometimes', 'boolean'],
+            // Opsional ubah password
+            'password'  => ['nullable', 'string', 'min:8', 'confirmed'],
         ]);
 
-        // Normalisasi
-        $isActive = $request->boolean('is_active'); // checkbox
-        $role     = $data['role'];
+        // Fallback ke nilai lama bila tidak dikirim
+        $role     = $data['role']      ?? $user->role;
+        $isActive = array_key_exists('is_active', $data) ? (bool)$data['is_active'] : (bool)$user->is_active;
 
-        // Larang ban/demote diri sendiri (supaya tidak terkunci)
-        if ((int)$user->id === (int)$me->id) {
+        // Guard: admin aktif terakhir TIDAK boleh diturunkan atau dibanned
+        if ($isLastActiveAdmin) {
+            $role     = 'admin';
             $isActive = true;
-            $role     = $user->role; // biarkan tetap
         }
 
-        // Cegah menonaktifkan ATAU mendemote admin terakhir yang masih aktif
-        $isAdminNow      = ($user->role === 'admin' && (int)$user->is_active === 1);
-        $becomesNotAdmin = ($role !== 'admin' || $isActive === false);
-
-        if ($isAdminNow && $becomesNotAdmin) {
-            $otherActiveAdmins = \App\Models\User::where('role', 'admin')
-                ->where('is_active', 1)
-                ->where('id', '!=', $user->id)
-                ->count();
-
-            if ($otherActiveAdmins === 0) {
-                return back()
-                    ->withErrors(['role' => 'Tidak boleh menonaktifkan atau menurunkan jabatan admin terakhir.'])
-                    ->withInput();
-            }
+        // (Opsional) Larang admin menurunkan peran dirinya sendiri
+        if ($isSelf && $user->role === 'admin' && $role !== 'admin') {
+            return back()->withErrors(['role' => 'Anda tidak bisa menurunkan peran admin Anda sendiri.']);
         }
 
-        // Update field dasar
-        $user->name      = $data['name'];
-        $user->email     = $data['email'];
-        $user->role      = $role;
-        $user->is_active = $isActive ? 1 : 0;
+        // Susun payload update
+        $update = [
+            'name'      => $data['name'],
+            'email'     => $data['email'],
+            'role'      => $role,
+            'is_active' => $isActive,
+        ];
 
-        // Ganti password bila diisi
-        if (!empty($data['new_password'])) {
-            $user->password = \Illuminate\Support\Facades\Hash::make($data['new_password']);
+        if (!empty($data['password'])) {
+            $update['password'] = \Illuminate\Support\Facades\Hash::make($data['password']);
         }
 
-        $user->save();
+        $user->update($update);
+
+        // Jika user yang diedit adalah user login saat ini & dibanned, paksa logout via session flag
+        if ($user->id === $request->user()->id && $isActive === false) {
+            // Tandai agar middleware ForceLogoutIfBanned mengeksekusi logout di request berikutnya
+            session()->flash('just_banned_self', true);
+        }
 
         return redirect()
-            ->route('admin.users.show', $user)
-            ->with('status', 'User diperbarui.');
+            ->route('admin.users.edit', $user)
+            ->with('status', 'User berhasil diperbarui.');
     }
 
     public function destroy(Request $request, \App\Models\User $user)
