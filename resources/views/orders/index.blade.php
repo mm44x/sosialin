@@ -5,6 +5,36 @@
 
     <div class="py-6">
         <div class="max-w-6xl mx-auto sm:px-6 lg:px-8">
+            {{-- Toolbar filter --}}
+            <form method="GET" action="{{ route('orders.index') }}" class="mb-4 grid md:grid-cols-4 gap-3 items-end">
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium">Cari (ID/Link/Layanan)</label>
+                    <input type="text" name="search" value="{{ $filters['search'] ?? request('search') }}"
+                        class="mt-1 w-full px-3 py-2 rounded-xl border bg-white dark:bg-slate-800 dark:text-white dark:border-slate-600"
+                        placeholder="mis. #123, instagram.com/..., atau nama layanan">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium">Status</label>
+                    @php $st = strtolower($filters['status'] ?? request('status')); @endphp
+                    <select name="status"
+                        class="mt-1 w-full px-3 py-2 rounded-xl border bg-white dark:bg-slate-800 dark:text-white dark:border-slate-600">
+                        <option value="">Semua</option>
+                        @foreach (['pending', 'processing', 'completed', 'partial', 'canceled', 'error'] as $opt)
+                            <option value="{{ $opt }}" @selected($st === $opt)>{{ ucfirst($opt) }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="flex gap-2">
+                    <button class="px-4 py-2 rounded-xl bg-primary text-white hover:opacity-90">Terapkan</button>
+                    <a href="{{ route('orders.index') }}"
+                        class="px-4 py-2 rounded-xl border dark:border-slate-600 hover:bg-primary/10">Reset</a>
+                </div>
+            </form>
+
+
             <div
                 class="overflow-x-auto rounded-2xl bg-white dark:bg-white/5 ring-1 ring-slate-200/60 dark:ring-white/10">
                 <table class="min-w-full text-sm">

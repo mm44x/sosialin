@@ -15,12 +15,44 @@ class OrderController extends Controller
 {
     public function index(Request $request)
     {
-        $orders = Order::with(['service.provider', 'service.category'])
-            ->where('user_id', $request->user()->id)
-            ->orderByDesc('id')
-            ->paginate(15);
+        $userId = (int) $request->user()->id;
 
-        return view('orders.index', ['orders' => $orders]);
+        $q = \App\Models\Order::query()
+            ->with(['service.category']) // jangan expose provider di user
+            ->where('user_id', $userId);
+
+        // Cari: ID order, provider_order_id, link, atau nama layanan
+        if ($request->filled('search')) {
+            $s = trim($request->string('search')->toString());
+            $q->where(function ($w) use ($s) {
+                $w->where('id', (int) $s) // cocokkan angka jadi exact untuk ID
+                    ->orWhere('provider_order_id', 'like', "%{$s}%")
+                    ->orWhere('link', 'like', "%{$s}%")
+                    ->orWhereHas('service', fn($qq) => $qq->where('name', 'like', "%{$s}%")
+                        ->orWhere('public_name', 'like', "%{$s}%"));
+            });
+        }
+
+        // Filter status (aman)
+        $allowed = ['pending', 'processing', 'completed', 'partial', 'canceled', 'error'];
+        if ($request->filled('status')) {
+            $st = strtolower($request->string('status')->toString());
+            if (in_array($st, $allowed, true)) {
+                $q->where('status', $st);
+            }
+        }
+
+        $orders = $q->orderByDesc('id')
+            ->paginate(15)
+            ->withQueryString();
+
+        return view('orders.index', [
+            'orders'  => $orders,
+            'filters' => [
+                'search' => $request->string('search')->toString(),
+                'status' => $request->string('status')->toString(),
+            ],
+        ]);
     }
 
     public function show(Order $order)
