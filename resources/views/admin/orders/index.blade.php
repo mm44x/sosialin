@@ -104,106 +104,110 @@
                                 $st = strtolower($o->status ?? '');
                                 $isFinal = in_array($st, ['completed', 'error'], true);
                             @endphp
-                            <td class="py-2 px-4">
-                                <div class="flex items-center gap-1">
-                                    <input type="checkbox"
-                                        class="h-4 w-4 js-row-check transition
-                  {{ $isFinal
-                      ? 'accent-slate-400 opacity-40 cursor-not-allowed'
-                      : 'accent-primary cursor-pointer hover:scale-105' }}"
-                                        value="{{ $o->id }}" @disabled($isFinal)
-                                        aria-disabled="{{ $isFinal ? 'true' : 'false' }}"
-                                        @if ($isFinal) title="Status final — tidak bisa bulk check" @endif>
-                                    @if ($isFinal)
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-slate-400"
-                                            viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                                            <path
-                                                d="M12 1a5 5 0 00-5 5v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V6a5 5 0 00-5-5zm-3 8V6a3 3 0 016 0v3H9z" />
-                                        </svg>
-                                    @endif
-                                </div>
-                            </td>
-                            <td class="py-2 px-4">
-                                <div class="flex items-center gap-2">
-                                    <span>#{{ $o->id }}</span>
-                                    <button type="button"
-                                        class="p-1 rounded-lg hover:bg-primary/10 focus:ring-2 focus:ring-primary js-copy"
-                                        data-copy="{{ $o->id }}" title="Salin Order ID">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
-                                            viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                        </svg>
-                                    </button>
-                                </div>
-                            </td>
-                            <td class="py-2 px-4">
-                                <div class="font-medium">{{ $o->user->name ?? '—' }}</div>
-                                <div class="text-xs text-slate-500">{{ $o->user->email ?? '' }}</div>
-                            </td>
-                            <td class="py-2 px-4">
-                                <div class="font-medium">
-                                    {{ $o->service->public_name ?? ($o->service->name ?? '-') }}</div>
-                                <div class="text-xs text-slate-500">{{ $o->service->category->name ?? '—' }}</div>
-                            </td>
-                            <td class="py-2 px-4">{{ number_format($o->quantity) }}</td>
-                            <td class="py-2 px-4">Rp {{ number_format($o->cost, 2) }}</td>
-                            <td class="py-2 px-4">
-                                <span @class([
-                                    'inline-block px-2 py-1 rounded-lg text-xs font-medium ring-1 ring-inset',
-                                    'bg-yellow-100 text-yellow-800 ring-yellow-200' => in_array($st, [
-                                        'pending',
-                                        'processing',
-                                    ]),
-                                    'bg-green-100 text-green-800 ring-green-200' => $st === 'completed',
-                                    'bg-orange-100 text-orange-800 ring-orange-200' => $st === 'partial',
-                                    'bg-red-100 text-red-800 ring-red-200' => in_array($st, [
-                                        'canceled',
-                                        'cancelled',
-                                        'error',
-                                    ]),
-                                    'bg-slate-100 text-slate-800 ring-slate-200' => !in_array($st, [
-                                        'pending',
-                                        'processing',
-                                        'completed',
-                                        'partial',
-                                        'canceled',
-                                        'cancelled',
-                                        'error',
-                                    ]),
-                                ])>{{ ucfirst($st) ?: 'Unknown' }}</span>
-                            </td>
-                            <td class="py-2 px-4">
-                                <div class="flex items-center gap-2">
-                                    <span>{{ $o->provider_order_id ?? '—' }}</span>
-                                    @if ($o->provider_order_id)
-                                        <button type="button" class="p-1 rounded-lg hover:bg-primary/10 js-copy"
-                                            data-copy="{{ $o->provider_order_id }}" title="Salin Provider Order ID">
+                            <tr class="border-t border-slate-200/60 dark:border-white/10">
+                                <td class="py-2 px-4">
+                                    <div class="flex items-center gap-1">
+                                        <input type="checkbox"
+                                            class="h-4 w-4 js-row-check transition
+                              {{ $isFinal
+                                  ? 'accent-slate-400 opacity-40 cursor-not-allowed'
+                                  : 'accent-primary cursor-pointer hover:scale-105' }}"
+                                            value="{{ $o->id }}" @disabled($isFinal)
+                                            aria-disabled="{{ $isFinal ? 'true' : 'false' }}"
+                                            @if ($isFinal) title="Status final — tidak bisa bulk check" @endif>
+                                        @if ($isFinal)
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-slate-400"
+                                                viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                                <path
+                                                    d="M12 1a5 5 0 00-5 5v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V6a5 5 0 00-5-5zm-3 8V6a3 3 0 016 0v3H9z" />
+                                            </svg>
+                                        @endif
+                                    </div>
+                                </td>
+                                <td class="py-2 px-4">
+                                    <div class="flex items-center gap-2">
+                                        <span>#{{ $o->id }}</span>
+                                        <button type="button"
+                                            class="p-1 rounded-lg hover:bg-primary/10 focus:ring-2 focus:ring-primary js-copy"
+                                            data-copy="{{ $o->id }}" title="Salin Order ID">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
                                                 viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2z" />
+                                                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                             </svg>
                                         </button>
-                                    @endif
-                                </div>
-                            </td>
-                            <td class="py-2 px-4">{{ $o->updated_at?->diffForHumans() }}</td>
-                            <td class="py-2 px-4">
-                                <div class="flex gap-2">
-                                    <a href="{{ route('admin.orders.show', $o) }}"
-                                        class="px-3 py-2 rounded-xl border dark:border-slate-600 hover:bg-primary/10">Detail</a>
-                                    @if (in_array($st, ['pending', 'processing', 'partial']) && $o->provider_order_id)
-                                        <form method="POST" action="{{ route('admin.orders.status-check', $o) }}">
-                                            @csrf
-                                            <button
-                                                class="px-3 py-2 rounded-xl border dark:border-slate-600 hover:bg-primary/10">
-                                                Cek status
+                                    </div>
+                                </td>
+                                <td class="py-2 px-4">
+                                    <div class="font-medium">{{ $o->user->name ?? '—' }}</div>
+                                    <div class="text-xs text-slate-500">{{ $o->user->email ?? '' }}</div>
+                                </td>
+                                <td class="py-2 px-4">
+                                    <div class="font-medium">
+                                        {{ $o->service->public_name ?? ($o->service->name ?? '-') }}</div>
+                                    <div class="text-xs text-slate-500">{{ $o->service->category->name ?? '—' }}</div>
+                                </td>
+                                <td class="py-2 px-4">{{ number_format($o->quantity) }}</td>
+                                <td class="py-2 px-4">Rp {{ number_format($o->cost, 2) }}</td>
+                                <td class="py-2 px-4">
+                                    <span @class([
+                                        'inline-block px-2 py-1 rounded-lg text-xs font-medium ring-1 ring-inset',
+                                        'bg-yellow-100 text-yellow-800 ring-yellow-200' => in_array($st, [
+                                            'pending',
+                                            'processing',
+                                        ]),
+                                        'bg-green-100 text-green-800 ring-green-200' => $st === 'completed',
+                                        'bg-orange-100 text-orange-800 ring-orange-200' => $st === 'partial',
+                                        'bg-red-100 text-red-800 ring-red-200' => in_array($st, [
+                                            'canceled',
+                                            'cancelled',
+                                            'error',
+                                        ]),
+                                        'bg-slate-100 text-slate-800 ring-slate-200' => !in_array($st, [
+                                            'pending',
+                                            'processing',
+                                            'completed',
+                                            'partial',
+                                            'canceled',
+                                            'cancelled',
+                                            'error',
+                                        ]),
+                                    ])>{{ ucfirst($st) ?: 'Unknown' }}</span>
+                                </td>
+                                <td class="py-2 px-4">
+                                    <div class="flex items-center gap-2">
+                                        <span>{{ $o->provider_order_id ?? '—' }}</span>
+                                        @if ($o->provider_order_id)
+                                            <button type="button" class="p-1 rounded-lg hover:bg-primary/10 js-copy"
+                                                data-copy="{{ $o->provider_order_id }}"
+                                                title="Salin Provider Order ID">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                                    fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2z" />
+                                                </svg>
                                             </button>
-                                        </form>
-                                    @endif
-                                </div>
-                            </td>
+                                        @endif
+                                    </div>
+                                </td>
+                                <td class="py-2 px-4">{{ $o->updated_at?->diffForHumans() }}</td>
+                                <td class="py-2 px-4">
+                                    <div class="flex gap-2">
+                                        <a href="{{ route('admin.orders.show', $o) }}"
+                                            class="px-3 py-2 rounded-xl border dark:border-slate-600 hover:bg-primary/10">Detail</a>
+                                        @if (in_array($st, ['pending', 'processing', 'partial']) && $o->provider_order_id)
+                                            <form method="POST"
+                                                action="{{ route('admin.orders.status-check', $o) }}">
+                                                @csrf
+                                                <button
+                                                    class="px-3 py-2 rounded-xl border dark:border-slate-600 hover:bg-primary/10">
+                                                    Cek status
+                                                </button>
+                                            </form>
+                                        @endif
+                                    </div>
+                                </td>
                             </tr>
                         @empty
                             <tr>
@@ -261,46 +265,50 @@
             });
 
             // Bulk select + submit
-            const selectAll = document.getElementById('selectAll');
-            const checks = () => Array.from(document.querySelectorAll('.js-row-check:not(:disabled)'));
-            const bulkBtn = document.getElementById('bulkBtn');
-            const bulkIds = document.getElementById('bulkIds');
-            const bulkForm = document.getElementById('bulkForm');
+            document.addEventListener('DOMContentLoaded', () => {
+                const selectAll = document.getElementById('selectAll');
+                const bulkBtn = document.getElementById('bulkBtn');
+                const bulkIds = document.getElementById('bulkIds');
+                const bulkForm = document.getElementById('bulkForm');
 
-            function updateBulkState() {
-                const selected = checks().filter(c => c.checked).map(c => c.value);
-                bulkBtn.disabled = selected.length === 0;
-            }
+                const checks = () => Array.from(document.querySelectorAll('.js-row-check:not(:disabled)'));
 
-            if (selectAll) {
-                selectAll.addEventListener('change', () => {
-                    checks().forEach(c => c.checked = selectAll.checked);
-                    updateBulkState();
-                });
-            }
-            document.addEventListener('change', (e) => {
-                if (e.target.classList && e.target.classList.contains('js-row-check')) {
-                    updateBulkState();
+                function updateBulkState() {
+                    const selected = checks().filter(c => c.checked).length;
+                    if (bulkBtn) bulkBtn.disabled = selected === 0;
                 }
-            });
 
-            if (bulkForm) {
-                bulkForm.addEventListener('submit', (e) => {
-                    const selected = checks().filter(c => c.checked).map(c => c.value);
-                    if (selected.length === 0) {
-                        e.preventDefault();
-                        if (window.toast) window.toast({
-                            message: 'Pilih minimal satu order.',
-                            type: 'error',
-                            timeout: 1200
-                        });
-                        return;
+                if (selectAll) {
+                    selectAll.addEventListener('change', () => {
+                        checks().forEach(c => c.checked = selectAll.checked);
+                        updateBulkState();
+                    });
+                }
+                document.addEventListener('change', (e) => {
+                    if (e.target.classList && e.target.classList.contains('js-row-check')) {
+                        updateBulkState();
                     }
-                    bulkIds.value = selected.join(',');
                 });
-            }
 
-            updateBulkState();
+                if (bulkForm) {
+                    bulkForm.addEventListener('submit', (e) => {
+                        const selected = checks().filter(c => c.checked).map(c => c.value);
+                        if (selected.length === 0) {
+                            e.preventDefault();
+                            if (window.toast) window.toast({
+                                message: 'Pilih minimal satu order.',
+                                type: 'error',
+                                timeout: 1200
+                            });
+                            return;
+                        }
+                        bulkIds.value = selected.join(',');
+                    });
+                }
+
+                // set awal
+                updateBulkState();
+            });
         </script>
     @endpush
 </x-app-layout>

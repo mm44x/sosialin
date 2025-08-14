@@ -8,109 +8,42 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Carbon\Carbon; // <— tambahkan
 
 class OrderController extends Controller
 {
     public function index(Request $request)
     {
-        $q       = trim((string) $request->input('q', ''));
-        $status  = trim((string) $request->input('status', ''));
+        $q       = trim((string) $request->input('q', ''));         // cari id/local, provider_id, link, email
+        $status  = trim((string) $request->input('status', ''));    // pending|processing|completed|partial|canceled|error
         $perPage = max(10, min(50, (int) $request->integer('per_page', 20)));
 
-        $dateFrom = $request->input('date_from');
-        $dateTo   = $request->input('date_to');
-
-        // ⇨ jika user kebalik isi tanggal, otomatis ditukar
-        if ($dateFrom && $dateTo && Carbon::parse($dateFrom)->gt(Carbon::parse($dateTo))) {
-            [$dateFrom, $dateTo] = [$dateTo, $dateFrom];
-        }
-
         $rows = Order::query()
-            ->with(['user:id,name,email', 'service:id,name,public_name,category_id', 'service.category:id,name'])
+            ->with([
+                'user:id,name,email',
+                'service:id,name,public_name,category_id,provider_id',
+                'service.category:id,name',
+                'service.provider:id,name,base_url,api_key',
+            ])
             ->when($q !== '', function ($qq) use ($q) {
                 $qq->where(function ($w) use ($q) {
-                    if (ctype_digit($q)) $w->orWhere('orders.id', (int) $q);
+                    if (ctype_digit($q)) {
+                        $w->orWhere('orders.id', (int) $q);
+                    }
                     $w->orWhere('orders.provider_order_id', 'like', "%{$q}%")
                         ->orWhere('orders.link', 'like', "%{$q}%")
-                        ->orWhereHas('user', fn($u) => $u->where('email', 'like', "%{$q}%")->orWhere('name', 'like', "%{$q}%"));
+                        ->orWhereHas('user', fn($u) => $u->where('email', 'like', "%{$q}%")
+                            ->orWhere('name', 'like', "%{$q}%"));
                 });
             })
             ->when($status !== '', fn($qq) => $qq->where('orders.status', $status))
-            ->when($dateFrom, fn($qq) => $qq->where('orders.created_at', '>=', Carbon::parse($dateFrom)->startOfDay()))
-            ->when($dateTo,   fn($qq) => $qq->where('orders.created_at', '<=', Carbon::parse($dateTo)->endOfDay()))
             ->orderByDesc('orders.id')
             ->paginate($perPage)
             ->withQueryString();
 
         return view('admin.orders.index', [
             'rows'    => $rows,
-            'filters' => [
-                'q'        => $q,
-                'status'   => $status,
-                'per_page' => $perPage,
-                'date_from' => $dateFrom,
-                'date_to'  => $dateTo,
-            ],
+            'filters' => ['q' => $q, 'status' => $status, 'per_page' => $perPage],
         ]);
-    }
-
-
-    public function export(Request $request)
-    {
-        $dateFrom = $request->input('date_from');
-        $dateTo   = $request->input('date_to');
-
-        $q = Order::query()
-            ->with(['user:id,name,email', 'service:id,name,public_name', 'service.category:id,name'])
-            ->when($request->filled('q'), function ($qq) use ($request) {
-                $s = trim((string) $request->input('q'));
-                $qq->where(function ($w) use ($s) {
-                    $w->where('id', $s)
-                        ->orWhere('provider_order_id', 'like', "%{$s}%")
-                        ->orWhere('link', 'like', "%{$s}%")
-                        ->orWhereHas('user', fn($u) => $u->where('email', 'like', "%{$s}%")
-                            ->orWhere('name', 'like', "%{$s}%"))
-                        ->orWhereHas('service', fn($sv) => $sv->where('name', 'like', "%{$s}%")
-                            ->orWhere('public_name', 'like', "%{$s}%"));
-                });
-            })
-            ->when($request->filled('status'), fn($qq) => $qq->where('status', strtolower((string) $request->input('status'))))
-            ->when($dateFrom, fn($qq) => $qq->where('created_at', '>=', Carbon::parse($dateFrom)->startOfDay()))
-            ->when($dateTo,   fn($qq) => $qq->where('created_at', '<=', Carbon::parse($dateTo)->endOfDay()))
-            ->orderByDesc('id');
-
-        $rows = $q->limit(20000)->get();
-
-        $headers = [
-            'Content-Type'        => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="orders_export_' . now()->format('Ymd_His') . '.csv"',
-        ];
-
-        $callback = function () use ($rows) {
-            $out = fopen('php://output', 'w');
-            fprintf($out, chr(0xEF) . chr(0xBB) . chr(0xBF));
-            fputcsv($out, ['Order ID', 'User Email', 'User Name', 'Service', 'Category', 'Qty', 'Cost', 'Status', 'Provider Order ID', 'Link', 'Created At', 'Updated At']);
-            foreach ($rows as $o) {
-                fputcsv($out, [
-                    $o->id,
-                    $o->user->email ?? '',
-                    $o->user->name ?? '',
-                    $o->service->public_name ?? $o->service->name ?? '',
-                    $o->service->category->name ?? '',
-                    $o->quantity,
-                    number_format((float) $o->cost, 2, '.', ''),
-                    $o->status,
-                    $o->provider_order_id,
-                    $o->link,
-                    optional($o->created_at)->toDateTimeString(),
-                    optional($o->updated_at)->toDateTimeString(),
-                ]);
-            }
-            fclose($out);
-        };
-
-        return response()->stream($callback, 200, $headers);
     }
 
     public function show(Order $order)
@@ -138,48 +71,135 @@ class OrderController extends Controller
         ]);
     }
 
-    public function bulkStatusCheck(Request $request)
+    public function statusCheck(Request $request, \App\Models\Order $order)
     {
-        // Ambil IDs dari "ids" (CSV atau array)
-        $ids = $request->input('ids', []);
-        if (is_string($ids)) {
-            $ids = array_filter(array_map('trim', explode(',', $ids)));
-        }
-        $ids = array_values(array_unique(array_map('intval', (array)$ids)));
-
-        if (empty($ids)) {
-            return back()->with('status', 'Tidak ada order yang dipilih.');
+        // Admin boleh cek semua
+        if (!$order->provider_order_id) {
+            return back()->with('status', 'Order belum memiliki ID provider — belum dapat dicek.');
         }
 
-        $orders = \App\Models\Order::with(['service.provider'])->whereIn('id', $ids)->get();
+        try {
+            $service  = $order->service()->with('provider')->firstOrFail();
+            $provider = $service->provider;
 
-        $stats = [
-            'total'        => count($ids),
-            'processed'    => 0,
-            'unchanged'    => 0,
-            'noProvId'     => 0,
-            'refunded'     => 0,
-            'partial'      => 0,
-            'skippedFinal' => 0, // completed / error
-            'errors'       => 0,
-        ];
+            $baseUrl = $provider->base_url ?: env('JAP_BASE_URL');
+            $apiKey  = $provider->api_key  ?: env('JAP_API_KEY');
 
-        foreach ($orders as $order) {
-            try {
-                // SKIP kalau status final
-                if (in_array($order->status, [
-                    \App\Models\Order::STATUS_COMPLETED,
-                    \App\Models\Order::STATUS_ERROR,
-                ], true)) {
-                    $stats['skippedFinal']++;
-                    continue;
+            $client = new \App\Services\Smm\JapClient(
+                baseUrl: $baseUrl,
+                apiKey: $apiKey,
+                providerId: $provider->id
+            );
+
+            $resp = $client->orderStatus(['order' => (string)$order->provider_order_id]);
+
+            $provStatus = strtolower((string)($resp['status'] ?? ''));
+            $mapped     = $this->mapProviderStatus($provStatus, $resp);
+            $remains    = isset($resp['remains']) ? (float)$resp['remains'] : null;
+
+            DB::transaction(function () use ($order, $mapped, $resp, $remains) {
+                /** @var \App\Models\Order $locked */
+                $locked = \App\Models\Order::where('id', $order->id)->lockForUpdate()->first();
+
+                $meta = $locked->meta ?? [];
+                $meta['last_status_response'] = $resp;
+                $meta['status_history'][] = [
+                    'at'      => now()->toDateTimeString(),
+                    'status'  => strtolower((string)($resp['status'] ?? '')),
+                    'mapped'  => $mapped,
+                    'remains' => $remains,
+                    'source'  => 'admin_manual',
+                ];
+
+                // Perbarui status jika berubah
+                if ($locked->status !== $mapped) {
+                    $locked->status = $mapped;
                 }
 
+                // Refund rules — idempoten lewat flag di meta
+                if ($mapped === Order::STATUS_CANCELED) {
+                    if (!Arr::get($meta, 'refund_done')) {
+                        app(\App\Services\WalletService::class)->credit($locked->user_id, (float)$locked->cost, 'refund', [
+                            'reason'   => 'canceled_by_provider_admin',
+                            'order_id' => $locked->id,
+                        ]);
+                        $meta['refund_done'] = true;
+                    }
+                } elseif ($mapped === Order::STATUS_PARTIAL && $remains !== null) {
+                    if (!Arr::get($meta, 'partial_refund_done')) {
+                        $qty    = max(1, (float)$locked->quantity);
+                        $ratio  = max(0, min(1, $remains / $qty));
+                        $refund = round(((float)$locked->cost) * $ratio, 2);
+                        if ($refund > 0) {
+                            app(\App\Services\WalletService::class)->credit($locked->user_id, $refund, 'refund', [
+                                'reason'   => 'partial_refund_admin',
+                                'order_id' => $locked->id,
+                                'remains'  => $remains,
+                                'ratio'    => $ratio,
+                            ]);
+                            $meta['partial_refund_done']   = true;
+                            $meta['partial_refund_amount'] = $refund;
+                        }
+                    }
+                }
+
+                $locked->meta = $meta;
+                $locked->save();
+            });
+
+            return back()->with('status', "Status diperbarui: " . ucfirst($mapped));
+        } catch (\Throwable $e) {
+            Log::error('ADMIN_ORDER_STATUS_CHECK_ERROR', ['order_id' => $order->id, 'e' => $e->getMessage()]);
+            return back()->with('status', "Gagal cek status: " . $e->getMessage());
+        }
+    }
+
+    /** === BULK STATUS CHECK (baru) === */
+    public function bulkStatusCheck(Request $request)
+    {
+        // Ambil daftar ID (CSV) dari hidden input "ids"
+        $idsCsv = (string) $request->input('ids', '');
+        $ids = collect(preg_split('/[,\s]+/', $idsCsv, -1, PREG_SPLIT_NO_EMPTY))
+            ->map(fn($x) => (int) $x)
+            ->filter(fn($x) => $x > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($ids)) {
+            return back()->with('status', 'Tidak ada order dipilih.');
+        }
+
+        // Batasi maksimal agar tidak berat
+        if (count($ids) > 50) {
+            $ids = array_slice($ids, 0, 50);
+        }
+
+        // Ambil orders + relasi yang diperlukan
+        $orders = Order::with(['service.provider'])
+            ->whereIn('id', $ids)
+            ->get();
+
+        $eligible = $orders->filter(function (Order $o) {
+            // Hanya yang belum final + punya provider_order_id
+            return in_array($o->status, [Order::STATUS_PENDING, Order::STATUS_PROCESSING, Order::STATUS_PARTIAL], true)
+                && !empty($o->provider_order_id);
+        });
+
+        $total      = count($ids);
+        $skipped    = $total - $eligible->count();
+        $sukses     = 0;
+        $updated    = 0;
+        $refunded   = 0;
+        $partialRef = 0;
+        $errors     = 0;
+
+        foreach ($eligible as $order) {
+            try {
                 $service  = $order->service;
                 $provider = $service?->provider;
-
-                if (!$order->provider_order_id || !$provider) {
-                    $stats['noProvId']++;
+                if (!$provider) {
+                    $errors++;
                     continue;
                 }
 
@@ -192,24 +212,15 @@ class OrderController extends Controller
                     providerId: $provider->id
                 );
 
-                $resp       = $client->orderStatus(['order' => (string) $order->provider_order_id]);
+                $resp = $client->orderStatus(['order' => (string) $order->provider_order_id]);
+
                 $provStatus = strtolower((string)($resp['status'] ?? ''));
                 $mapped     = $this->mapProviderStatus($provStatus, $resp);
                 $remains    = isset($resp['remains']) ? (float)$resp['remains'] : null;
 
-                \Illuminate\Support\Facades\DB::transaction(function () use ($order, $mapped, $resp, $remains, &$stats) {
-                    /** @var \App\Models\Order $locked */
-                    $locked = \App\Models\Order::where('id', $order->id)->lockForUpdate()->first();
-                    if (!$locked) return;
-
-                    // Safety: SKIP kalau mendadak final saat transaksi dimulai
-                    if (in_array($locked->status, [
-                        \App\Models\Order::STATUS_COMPLETED,
-                        \App\Models\Order::STATUS_ERROR,
-                    ], true)) {
-                        $stats['skippedFinal']++;
-                        return;
-                    }
+                DB::transaction(function () use ($order, $resp, $mapped, $remains, &$updated, &$refunded, &$partialRef) {
+                    /** @var Order $locked */
+                    $locked = Order::where('id', $order->id)->lockForUpdate()->first();
 
                     $meta = $locked->meta ?? [];
                     $meta['last_status_response'] = $resp;
@@ -221,61 +232,149 @@ class OrderController extends Controller
                         'source'  => 'admin_bulk',
                     ];
 
-                    $changed = false;
+                    // Update status jika berubah
                     if ($locked->status !== $mapped) {
                         $locked->status = $mapped;
-                        $changed = true;
+                        $updated++;
                     }
 
-                    // Refund rules (idempoten via flag di meta)
-                    if ($mapped === \App\Models\Order::STATUS_CANCELED) {
-                        if (!\Illuminate\Support\Arr::get($meta, 'refund_done')) {
+                    // Refund rules — idempoten lewat flag di meta
+                    if ($mapped === Order::STATUS_CANCELED) {
+                        if (!Arr::get($meta, 'refund_done')) {
                             app(\App\Services\WalletService::class)->credit($locked->user_id, (float)$locked->cost, 'refund', [
-                                'reason'   => 'canceled_by_provider_bulk',
+                                'reason'   => 'canceled_by_provider_admin_bulk',
                                 'order_id' => $locked->id,
                             ]);
                             $meta['refund_done'] = true;
-                            $stats['refunded']++;
-                            $changed = true;
+                            $refunded++;
                         }
-                    } elseif ($mapped === \App\Models\Order::STATUS_PARTIAL && $remains !== null) {
-                        if (!\Illuminate\Support\Arr::get($meta, 'partial_refund_done')) {
+                    } elseif ($mapped === Order::STATUS_PARTIAL && $remains !== null) {
+                        if (!Arr::get($meta, 'partial_refund_done')) {
                             $qty    = max(1, (float)$locked->quantity);
                             $ratio  = max(0, min(1, $remains / $qty));
                             $refund = round(((float)$locked->cost) * $ratio, 2);
                             if ($refund > 0) {
                                 app(\App\Services\WalletService::class)->credit($locked->user_id, $refund, 'refund', [
-                                    'reason'   => 'partial_refund_bulk',
+                                    'reason'   => 'partial_refund_admin_bulk',
                                     'order_id' => $locked->id,
                                     'remains'  => $remains,
                                     'ratio'    => $ratio,
                                 ]);
                                 $meta['partial_refund_done']   = true;
                                 $meta['partial_refund_amount'] = $refund;
-                                $stats['partial']++;
-                                $changed = true;
+                                $partialRef++;
                             }
                         }
                     }
 
                     $locked->meta = $meta;
                     $locked->save();
-
-                    if ($changed) $stats['processed']++;
-                    else $stats['unchanged']++;
                 });
+
+                $sukses++;
             } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::error('ADMIN_BULK_STATUS_ERROR', [
-                    'order_id' => $order->id ?? null,
-                    'e'        => $e->getMessage(),
+                $errors++;
+                Log::error('ADMIN_BULK_STATUS_CHECK_ERROR', [
+                    'order_id' => $order->id,
+                    'e' => $e->getMessage(),
                 ]);
-                $stats['errors']++;
             }
         }
 
-        $msg = "Bulk cek: total {$stats['total']}, diproses {$stats['processed']}, tidak berubah {$stats['unchanged']}, " .
-            "tanpa Prov.ID {$stats['noProvId']}, partial refund {$stats['partial']}, " .
-            "skip final {$stats['skippedFinal']}, gagal {$stats['errors']}.";
+        $msg = "Bulk check selesai. Dipilih: {$total}, dilewati (final/tanpa provider id): {$skipped}, sukses cek: {$sukses}, diperbarui: {$updated}, refund: {$refunded}, partial refund: {$partialRef}, error: {$errors}.";
         return back()->with('status', $msg);
+    }
+
+    /** Salin pemetaan seperti di OrderController */
+    private function mapProviderStatus(string $provStatus, array $resp): string
+    {
+        $provStatus = trim(strtolower($provStatus));
+        if (
+            $provStatus === 'completed' || $provStatus === 'success' ||
+            (($resp['remains'] ?? null) === 0 || ($resp['remains'] ?? null) === '0') // JAP returns '0' for 0 remains
+        ) {
+            return Order::STATUS_COMPLETED;
+        }
+        if ($provStatus === 'partial') {
+            return Order::STATUS_PARTIAL;
+        }
+        if ($provStatus === 'canceled' || $provStatus === 'cancelled') {
+            return Order::STATUS_CANCELED;
+        }
+        if ($provStatus === 'processing' || $provStatus === 'in progress' || $provStatus === 'inprogress') {
+            return Order::STATUS_PROCESSING;
+        }
+        if ($provStatus === 'pending' || $provStatus === '') {
+            return Order::STATUS_PENDING;
+        }
+        return Order::STATUS_PROCESSING; // Default fallback
+    }
+
+    public function export(Request $request)
+    {
+        // Query mengikuti filter di index
+        $q = \App\Models\Order::query()
+            ->with(['user:id,name,email', 'service:id,name,public_name', 'service.category:id,name'])
+            ->when($request->filled('q'), function ($qq) use ($request) {
+                $s = trim((string) $request->input('q'));
+                $qq->where(function ($w) use ($s) {
+                    $w->where('id', $s)
+                        ->orWhere('provider_order_id', 'like', "%{$s}%")
+                        ->orWhere('link', 'like', "%{$s}%")
+                        ->orWhereHas('user', fn($u) => $u->where('email', 'like', "%{$s}%")->orWhere('name', 'like', "%{$s}%"))
+                        ->orWhereHas('service', fn($sv) => $sv->where('name', 'like', "%{$s}%")->orWhere('public_name', 'like', "%{$s}%"));
+                });
+            })
+            ->when($request->filled('status'), fn($qq) => $qq->where('status', strtolower((string)$request->input('status'))))
+            ->orderByDesc('id');
+
+        $rows = $q->limit(20000)->get(); // batasi export agar ringan
+
+        // Siapkan CSV dalam memory
+        $headers = [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="orders_export_' . now()->format('Ymd_His') . '.csv"',
+        ];
+
+        $callback = function () use ($rows) {
+            $out = fopen('php://output', 'w');
+            // BOM UTF-8 agar Excel nyaman
+            fprintf($out, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+            fputcsv($out, [
+                'Order ID',
+                'User Email',
+                'User Name',
+                'Service',
+                'Category',
+                'Qty',
+                'Cost',
+                'Status',
+                'Provider Order ID',
+                'Link',
+                'Created At',
+                'Updated At'
+            ]);
+
+            foreach ($rows as $o) {
+                fputcsv($out, [
+                    $o->id,
+                    $o->user->email ?? '',
+                    $o->user->name ?? '',
+                    $o->service->public_name ?? $o->service->name ?? '',
+                    $o->service->category->name ?? '',
+                    $o->quantity,
+                    number_format((float)$o->cost, 2, '.', ''),
+                    $o->status,
+                    $o->provider_order_id,
+                    $o->link,
+                    optional($o->created_at)->toDateTimeString(),
+                    optional($o->updated_at)->toDateTimeString(),
+                ]);
+            }
+            fclose($out);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }
