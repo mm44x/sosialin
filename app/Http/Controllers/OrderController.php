@@ -11,12 +11,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 
-
 class OrderController extends Controller
 {
     public function index(Request $request)
     {
-        $orders = \App\Models\Order::with(['service.provider', 'service.category'])
+        $orders = Order::with(['service.provider', 'service.category'])
             ->where('user_id', $request->user()->id)
             ->orderByDesc('id')
             ->paginate(15);
@@ -24,7 +23,7 @@ class OrderController extends Controller
         return view('orders.index', ['orders' => $orders]);
     }
 
-    public function show(\App\Models\Order $order)
+    public function show(Order $order)
     {
         // Pastikan hanya pemilik yang bisa melihat
         abort_if($order->user_id !== auth()->id(), 403);
@@ -49,12 +48,11 @@ class OrderController extends Controller
         ]);
     }
 
-
-    public function statusCheck(Request $request, \App\Models\Order $order)
+    public function statusCheck(Request $request, Order $order)
     {
         // Pemilik order atau admin
         $user = $request->user();
-        if ($user->role !== 'admin' && (int)$order->user_id !== (int)$user->id) {
+        if ($user->role !== 'admin' && (int) $order->user_id !== (int) $user->id) {
             abort(403);
         }
 
@@ -75,23 +73,22 @@ class OrderController extends Controller
                 providerId: $provider->id
             );
 
+            $resp = $client->orderStatus(['order' => (string) $order->provider_order_id]);
 
-            $resp = $client->orderStatus(['order' => (string)$order->provider_order_id]);
-
-            $provStatus = strtolower((string)($resp['status'] ?? ''));
+            $provStatus = strtolower((string) ($resp['status'] ?? ''));
             $mapped     = $this->mapProviderStatus($provStatus, $resp);
-            $remains    = isset($resp['remains']) ? (float)$resp['remains'] : null;
+            $remains    = isset($resp['remains']) ? (float) $resp['remains'] : null;
 
             // Tulis perubahan + refund secara atomik & idempoten
             DB::transaction(function () use ($order, $mapped, $resp, $remains) {
                 /** @var \App\Models\Order $locked */
-                $locked = \App\Models\Order::where('id', $order->id)->lockForUpdate()->first();
+                $locked = Order::where('id', $order->id)->lockForUpdate()->first();
 
                 $meta = $locked->meta ?? [];
                 $meta['last_status_response'] = $resp;
                 $meta['status_history'][] = [
                     'at'      => now()->toDateTimeString(),
-                    'status'  => strtolower((string)($resp['status'] ?? '')),
+                    'status'  => strtolower((string) ($resp['status'] ?? '')),
                     'mapped'  => $mapped,
                     'remains' => $remains,
                 ];
@@ -102,19 +99,19 @@ class OrderController extends Controller
                 }
 
                 // Refund rules — SEKALI saja
-                if ($mapped === \App\Models\Order::STATUS_CANCELED) {
+                if ($mapped === Order::STATUS_CANCELED) {
                     if (!Arr::get($meta, 'refund_done')) {
-                        app(\App\Services\WalletService::class)->credit($locked->user_id, (float)$locked->cost, 'refund', [
+                        app(\App\Services\WalletService::class)->credit($locked->user_id, (float) $locked->cost, 'refund', [
                             'reason'   => 'canceled_by_provider_manual_check',
                             'order_id' => $locked->id,
                         ]);
                         $meta['refund_done'] = true;
                     }
-                } elseif ($mapped === \App\Models\Order::STATUS_PARTIAL && $remains !== null) {
+                } elseif ($mapped === Order::STATUS_PARTIAL && $remains !== null) {
                     if (!Arr::get($meta, 'partial_refund_done')) {
-                        $qty    = max(1, (float)$locked->quantity);
+                        $qty    = max(1, (float) $locked->quantity);
                         $ratio  = max(0, min(1, $remains / $qty)); // 0..1
-                        $refund = round(((float)$locked->cost) * $ratio, 2);
+                        $refund = round(((float) $locked->cost) * $ratio, 2);
                         if ($refund > 0) {
                             app(\App\Services\WalletService::class)->credit($locked->user_id, $refund, 'refund', [
                                 'reason'   => 'partial_refund_manual_check',
@@ -132,10 +129,10 @@ class OrderController extends Controller
                 $locked->save();
             });
 
-            return back()->with('status', "Status diperbarui: " . ucfirst($mapped));
+            return back()->with('status', 'Status diperbarui: ' . ucfirst($mapped));
         } catch (\Throwable $e) {
             Log::error('ORDER_STATUS_CHECK_ERROR', ['order_id' => $order->id, 'e' => $e->getMessage()]);
-            return back()->with('status', "Gagal cek status: " . $e->getMessage());
+            return back()->with('status', 'Gagal cek status: ' . $e->getMessage());
         }
     }
 
@@ -147,47 +144,53 @@ class OrderController extends Controller
             $provStatus === 'completed' || $provStatus === 'success' ||
             (($resp['remains'] ?? null) === 0 || ($resp['remains'] ?? null) === '0')
         ) {
-            return \App\Models\Order::STATUS_COMPLETED;
+            return Order::STATUS_COMPLETED;
         }
         if ($provStatus === 'partial') {
-            return \App\Models\Order::STATUS_PARTIAL;
+            return Order::STATUS_PARTIAL;
         }
         if ($provStatus === 'canceled' || $provStatus === 'cancelled') {
-            return \App\Models\Order::STATUS_CANCELED;
+            return Order::STATUS_CANCELED;
         }
         if ($provStatus === 'processing' || $provStatus === 'in progress' || $provStatus === 'inprogress') {
-            return \App\Models\Order::STATUS_PROCESSING;
+            return Order::STATUS_PROCESSING;
         }
         if ($provStatus === 'pending' || $provStatus === '') {
-            return \App\Models\Order::STATUS_PENDING;
+            return Order::STATUS_PENDING;
         }
-        return \App\Models\Order::STATUS_PROCESSING;
+        return Order::STATUS_PROCESSING;
     }
 
+    // (Cadangan lama – tidak dipakai, tetapi dibiarkan jika ada referensi lain)
     protected function mapStatus(string $provStatus, array $resp): string
     {
         $provStatus = trim($provStatus);
 
         if ($provStatus === 'completed' || $provStatus === 'success' || ($resp['remains'] ?? null) === 0) {
-            return \App\Models\Order::STATUS_COMPLETED;
+            return Order::STATUS_COMPLETED;
         }
         if ($provStatus === 'partial') {
-            return \App\Models\Order::STATUS_PARTIAL;
+            return Order::STATUS_PARTIAL;
         }
         if ($provStatus === 'canceled' || $provStatus === 'cancelled') {
-            return \App\Models\Order::STATUS_CANCELED;
+            return Order::STATUS_CANCELED;
         }
         if ($provStatus === 'processing' || $provStatus === 'in progress' || $provStatus === 'inprogress') {
-            return \App\Models\Order::STATUS_PROCESSING;
+            return Order::STATUS_PROCESSING;
         }
         if ($provStatus === 'pending' || $provStatus === '') {
-            return \App\Models\Order::STATUS_PENDING;
+            return Order::STATUS_PENDING;
         }
-        return \App\Models\Order::STATUS_PROCESSING;
+        return Order::STATUS_PROCESSING;
     }
 
-    public function create(\App\Models\Service $service)
+    public function create(Service $service)
     {
+        // Guard: hanya layanan aktif & public
+        if (!$service->active || !$service->public_active) {
+            abort(404); // samarkan agar tidak bisa diintip
+        }
+
         $ps = app(\App\Services\PricingService::class);
         $bd = $ps->breakdown($service, $service->min);
 
@@ -202,8 +205,6 @@ class OrderController extends Controller
         ]);
     }
 
-
-
     public function store(Request $request, Service $service)
     {
         $request->validate([
@@ -211,27 +212,32 @@ class OrderController extends Controller
             'quantity' => ['required', 'integer', 'min:' . $service->min, 'max:' . $service->max],
         ]);
 
+        // Guard: blokir order jika layanan tidak aktif/tidak publik
+        if (!$service->active || !$service->public_active) {
+            return back()->withErrors(['quantity' => 'Layanan tidak tersedia.'])->withInput();
+        }
+
         $qty = (int) $request->integer('quantity');
 
         // === Satu-satunya sumber kebenaran harga ===
         $ps = app(\App\Services\PricingService::class);
         $bd = $ps->breakdown($service, $qty);
 
-        $cost           = $bd['cost'];                 // FINAL — gunakan ini saja
+        $cost           = $bd['cost'];               // FINAL — gunakan ini saja
         $baseRate       = $bd['baseRateUSD'];
         $markup         = $bd['usedMarkup'];
-        $rateWithMarkup = $bd['rateUSDwithMarkup'];    // USD / 1000 (after markup)
+        $rateWithMarkup = $bd['rateUSDwithMarkup'];  // USD / 1000 (after markup)
 
         $userId = (int) $request->user()->id;
 
         // 1) Potong saldo + buat order pending secara atomik (tanpa call HTTP di dalam transaksi)
         try {
             app(\App\Services\WalletService::class)->debit($userId, $cost, [
-                'reason'      => 'reserve_for_order',
-                'service_id'  => $service->id,
-                'qty'         => $qty,
-                'rate_1000_usd'   => $rateWithMarkup,
-                'rate_1000_local' => $bd['ratePerThousandLocal'],
+                'reason'           => 'reserve_for_order',
+                'service_id'       => $service->id,
+                'qty'              => $qty,
+                'rate_1000_usd'    => $rateWithMarkup,
+                'rate_1000_local'  => $bd['ratePerThousandLocal'],
             ]);
         } catch (\Throwable $e) {
             // Saldo tidak cukup atau error wallet lainnya
@@ -239,12 +245,12 @@ class OrderController extends Controller
         }
 
         // Buat order lokal (pending)
-        $order = \App\Models\Order::create([
+        $order = Order::create([
             'user_id'    => $userId,
             'service_id' => $service->id,
-            'link'       => $request->string('link'),
+            'link'       => (string) $request->input('link'),
             'quantity'   => $qty,
-            'status'     => \App\Models\Order::STATUS_PENDING,
+            'status'     => Order::STATUS_PENDING,
             'cost'       => $cost, // ← tetap dari $bd
             'meta'       => [
                 'base_rate_usd'        => $baseRate,
