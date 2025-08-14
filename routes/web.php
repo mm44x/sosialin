@@ -1,4 +1,3 @@
-<!-- Path: routes/web.php -->
 <?php
 
 use Illuminate\Support\Facades\Route;
@@ -58,9 +57,10 @@ Route::middleware(['auth', 'verified', 'admin'])
         // Dashboard
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-        // Pengguna
-        Route::get('/users', [AdminUserController::class, 'index'])->name('users.index');
-        Route::get('/users/export', [AdminUserController::class, 'export'])->name('users.export');
+        // Users (Admin)
+        Route::get('/users',            [\App\Http\Controllers\Admin\UserController::class, 'index'])->name('users.index');
+        Route::get('/users/export',     [\App\Http\Controllers\Admin\UserController::class, 'export'])->name('users.export');
+        Route::get('/users/{user}',     [\App\Http\Controllers\Admin\UserController::class, 'show'])->name('users.show');
 
         // Providers
         Route::get('/providers',                 [ProviderController::class, 'index'])->name('providers.index');

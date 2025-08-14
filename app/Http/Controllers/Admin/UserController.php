@@ -161,4 +161,36 @@ class UserController extends Controller
 
         return response()->stream($callback, 200, $headers);
     }
+
+    public function show(\App\Models\User $user)
+    {
+        // saldo & ringkasan
+        $user->load(['wallet']);
+        $user->loadCount('orders');
+        $balance = (float) optional($user->wallet)->balance ?? 0.0;
+
+        // Order terbaru (10)
+        $recentOrders = \App\Models\Order::with([
+            'service:id,name,public_name,category_id',
+            'service.category:id,name',
+        ])
+            ->where('user_id', $user->id)
+            ->orderByDesc('id')
+            ->limit(10)
+            ->get();
+
+        // Transaksi wallet terbaru (10)
+        // Sesuaikan nama model jika berbeda di project Anda
+        $recentTx = \App\Models\Transaction::where('user_id', $user->id)
+            ->orderByDesc('id')
+            ->limit(10)
+            ->get();
+
+        return view('admin.users.show', [
+            'user'        => $user,
+            'balance'     => $balance,
+            'recentOrders' => $recentOrders,
+            'recentTx'    => $recentTx,
+        ]);
+    }
 }
