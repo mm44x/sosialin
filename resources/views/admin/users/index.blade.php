@@ -104,7 +104,7 @@
                                             Detail
                                         </a>
                                         <a href="{{ route('admin.users.edit', $u) }}"
-                                            class="px-3 py-2 rounded-xl bg-primary text-white hover:opacity-90 whitespace-nowrap">
+                                            class="px-3 py-2 rounded-xl border dark:border-slate-600 hover:bg-primary/10 whitespace-nowrap">
                                             Edit
                                         </a>
                                         <a href="{{ route('admin.orders.index', ['q' => $u->email]) }}"

@@ -102,30 +102,92 @@ class UserController extends Controller
         return view('admin.users.edit', ['user' => $user]);
     }
 
-    public function update(Request $request, User $user)
+    public function update(Request $request, \App\Models\User $user)
     {
+        $me = $request->user();
+
         $data = $request->validate([
             'name'                  => ['required', 'string', 'max:255'],
-            'email'                 => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
-            'password'              => ['nullable', 'string', 'min:8', 'confirmed'],
-            'is_active'             => ['nullable', 'boolean'], // checkbox
+            'email'                 => ['required', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'role'                  => ['required', 'in:user,admin'],
+            'is_active'             => ['nullable', 'boolean'],
+            'new_password'          => ['nullable', 'string', 'min:8'],
+            'new_password_confirm'  => ['nullable', 'same:new_password'],
         ]);
 
-        $payload = [
-            'name'      => $data['name'],
-            'email'     => $data['email'],
-            'is_active' => $request->boolean('is_active'), // unchecked => false (banned)
-        ];
+        // Normalisasi
+        $isActive = $request->boolean('is_active'); // checkbox
+        $role     = $data['role'];
 
-        if (!empty($data['password'])) {
-            $payload['password'] = $data['password'];
+        // Larang ban/demote diri sendiri (supaya tidak terkunci)
+        if ((int)$user->id === (int)$me->id) {
+            $isActive = true;
+            $role     = $user->role; // biarkan tetap
         }
 
-        $user->update($payload);
+        // Cegah menonaktifkan ATAU mendemote admin terakhir yang masih aktif
+        $isAdminNow      = ($user->role === 'admin' && (int)$user->is_active === 1);
+        $becomesNotAdmin = ($role !== 'admin' || $isActive === false);
+
+        if ($isAdminNow && $becomesNotAdmin) {
+            $otherActiveAdmins = \App\Models\User::where('role', 'admin')
+                ->where('is_active', 1)
+                ->where('id', '!=', $user->id)
+                ->count();
+
+            if ($otherActiveAdmins === 0) {
+                return back()
+                    ->withErrors(['role' => 'Tidak boleh menonaktifkan atau menurunkan jabatan admin terakhir.'])
+                    ->withInput();
+            }
+        }
+
+        // Update field dasar
+        $user->name      = $data['name'];
+        $user->email     = $data['email'];
+        $user->role      = $role;
+        $user->is_active = $isActive ? 1 : 0;
+
+        // Ganti password bila diisi
+        if (!empty($data['new_password'])) {
+            $user->password = \Illuminate\Support\Facades\Hash::make($data['new_password']);
+        }
+
+        $user->save();
 
         return redirect()
-            ->route('admin.users.index', $user)
-            ->with('status', 'User berhasil diperbarui' . ($payload['is_active'] ? '' : ' (Nonaktif/Banned)') . '.');
+            ->route('admin.users.show', $user)
+            ->with('status', 'User diperbarui.');
+    }
+
+    public function destroy(Request $request, \App\Models\User $user)
+    {
+        $me = $request->user();
+
+        // Larang hapus diri sendiri
+        if ((int)$user->id === (int)$me->id) {
+            return back()->with('status', 'Tidak dapat menghapus akun Anda sendiri.');
+        }
+
+        // Cegah hapus admin aktif terakhir
+        $isAdminActive = ($user->role === 'admin' && (int)$user->is_active === 1);
+        if ($isAdminActive) {
+            $otherActiveAdmins = \App\Models\User::where('role', 'admin')
+                ->where('is_active', 1)
+                ->where('id', '!=', $user->id)
+                ->count();
+
+            if ($otherActiveAdmins === 0) {
+                return back()->with('status', 'Tidak dapat menghapus admin aktif terakhir.');
+            }
+        }
+
+        // Jika pakai SoftDeletes, ini akan soft-delete
+        $user->delete();
+
+        return redirect()
+            ->route('admin.users.index')
+            ->with('status', 'User dihapus.');
     }
 
     public function export(Request $request)

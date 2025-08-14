@@ -62,18 +62,13 @@ Route::middleware(['auth', 'verified', 'admin'])
         // Route::get('/users/export',     [\App\Http\Controllers\Admin\UserController::class, 'export'])->name('users.export');
         // Route::get('/users/{user}',     [\App\Http\Controllers\Admin\UserController::class, 'show'])->name('users.show');
         // USERS (Admin)
-        // Route::get('/users', [\App\Http\Controllers\Admin\UserController::class, 'index'])->name('users.index');
-        // Route::get('/users/export', [\App\Http\Controllers\Admin\UserController::class, 'export'])->name('users.export'); // ← sebelum wildcard!
-        // Route::get('/users/{user}', [\App\Http\Controllers\Admin\UserController::class, 'show'])->name('users.show');
-        // Route::get('/users/{user}/edit', [\App\Http\Controllers\Admin\UserController::class, 'edit'])->name('users.edit');
-        // Route::put('/users/{user}', [\App\Http\Controllers\Admin\UserController::class, 'update'])->name('users.update');
-        // Route::delete('/users/{user}', [\App\Http\Controllers\Admin\UserController::class, 'destroy'])->name('users.destroy');
-        // asd
-        Route::get('/users', [\App\Http\Controllers\Admin\UserController::class, 'index'])->name('users.index');
-        Route::get('/users/export', [\App\Http\Controllers\Admin\UserController::class, 'export'])->name('users.export');
-        Route::get('/users/{user}', [\App\Http\Controllers\Admin\UserController::class, 'show'])->name('users.show');
-        Route::get('/users/{user}/edit', [\App\Http\Controllers\Admin\UserController::class, 'edit'])->name('users.edit');
-        Route::put('/users/{user}', [\App\Http\Controllers\Admin\UserController::class, 'update'])->name('users.update');
+        // Admin — Users
+        Route::get('/users',                [\App\Http\Controllers\Admin\UserController::class, 'index'])->name('users.index');
+        Route::get('/users/export',        [\App\Http\Controllers\Admin\UserController::class, 'export'])->name('users.export');
+        Route::get('/users/{user}',        [\App\Http\Controllers\Admin\UserController::class, 'show'])->name('users.show');
+        Route::get('/users/{user}/edit',   [\App\Http\Controllers\Admin\UserController::class, 'edit'])->name('users.edit');
+        Route::put('/users/{user}',        [\App\Http\Controllers\Admin\UserController::class, 'update'])->name('users.update');
+        Route::delete('/users/{user}',     [\App\Http\Controllers\Admin\UserController::class, 'destroy'])->name('users.destroy');
 
         // Providers
         Route::get('/providers',                 [ProviderController::class, 'index'])->name('providers.index');

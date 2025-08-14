@@ -35,6 +35,10 @@
                         class="px-4 py-2 rounded-xl border dark:border-slate-600 hover:bg-primary/10">
                         ← Kembali ke daftar
                     </a>
+                    <a href="{{ route('admin.users.edit', $user) }}"
+                        class="px-3 py-2 rounded-xl border dark:border-slate-600 hover:bg-primary/10">
+                        Edit User
+                    </a>
                     <a href="{{ route('admin.orders.index', ['q' => $user->email]) }}"
                         class="px-4 py-2 rounded-xl border dark:border-slate-600 hover:bg-primary/10">
                         Lihat semua order user ini
