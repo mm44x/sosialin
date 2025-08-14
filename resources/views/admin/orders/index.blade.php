@@ -7,17 +7,25 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
 
             {{-- Filter bar --}}
-            <form method="GET" class="mb-4 grid md:grid-cols-4 gap-3 items-end">
+            <form method="GET" class="mb-4 grid md:grid-cols-4 gap-3 md:items-end">
+                @php
+                    $ctl =
+                        'mt-1 w-full h-11 px-3 rounded-xl border bg-white dark:bg-slate-800 dark:text-white dark:border-slate-600';
+                    $btn =
+                        'h-11 inline-flex items-center px-4 rounded-xl border dark:border-slate-600 hover:bg-primary/10';
+                    $btnPrimary =
+                        'h-11 inline-flex items-center px-4 rounded-xl bg-primary text-white hover:opacity-90';
+                @endphp
+
                 <div class="md:col-span-2">
                     <label class="block text-sm font-medium">Cari (ID/Provider ID/Link/Email/Nama)</label>
-                    <input type="text" name="q" value="{{ $filters['q'] ?? '' }}"
-                        class="mt-1 w-full px-3 py-2 rounded-xl border bg-white dark:bg-slate-800 dark:text-white dark:border-slate-600"
+                    <input type="text" name="q" value="{{ $filters['q'] ?? '' }}" class="{{ $ctl }}"
                         placeholder="mis. 1024 atau user@example.com">
                 </div>
+
                 <div>
                     <label class="block text-sm font-medium">Status</label>
-                    <select name="status"
-                        class="mt-1 w-full px-3 py-2 rounded-xl border bg-white dark:bg-slate-800 dark:text-white dark:border-slate-600">
+                    <select name="status" class="{{ $ctl }}">
                         @php $st = $filters['status'] ?? ''; @endphp
                         <option value="">Semua</option>
                         @foreach (['pending', 'processing', 'completed', 'partial', 'canceled', 'error'] as $opt)
@@ -26,12 +34,20 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="flex gap-2">
-                    <button class="px-4 py-2 rounded-xl bg-primary text-white hover:opacity-90">Terapkan</button>
-                    <a href="{{ route('admin.orders.index') }}"
-                        class="px-4 py-2 rounded-xl border dark:border-slate-600 hover:bg-primary/10">Reset</a>
+
+                <div class="flex gap-2 md:justify-end self-end">
+                    <button class="{{ $btnPrimary }}" type="submit">Terapkan</button>
+
+                    <a href="{{ route('admin.orders.index') }}" class="{{ $btn }}">Reset</a>
+
+                    <a href="{{ route('admin.orders.export', request()->query()) }}" class="{{ $btn }}"
+                        title="Ekspor CSV sesuai filter saat ini">
+                        Export
+                    </a>
                 </div>
             </form>
+
+
 
             <div
                 class="overflow-x-auto rounded-2xl bg-white dark:bg-white/5 ring-1 ring-slate-200/60 dark:ring-white/10">
@@ -72,7 +88,8 @@
                                     <div class="text-xs text-slate-500">{{ $o->user->email ?? '' }}</div>
                                 </td>
                                 <td class="py-2 px-4">
-                                    <div class="font-medium">{{ $o->service->public_name ?? ($o->service->name ?? '-') }}
+                                    <div class="font-medium">
+                                        {{ $o->service->public_name ?? ($o->service->name ?? '-') }}
                                     </div>
                                     <div class="text-xs text-slate-500">{{ $o->service->category->name ?? '—' }}</div>
                                 </td>

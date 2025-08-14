@@ -76,6 +76,8 @@ Route::middleware(['auth', 'verified', 'admin'])
         Route::get('/api-logs/{log}', [ApiLogController::class, 'show'])->name('api-logs.show');
 
         // Orders (Admin monitor)
+        Route::get('/orders/export', [AdminOrderController::class, 'export'])
+            ->name('orders.export');
         Route::get('/orders',         [AdminOrderController::class, 'index'])->name('orders.index');
         Route::get('/orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
         Route::post('/orders/{order}/status-check', [AdminOrderController::class, 'statusCheck'])

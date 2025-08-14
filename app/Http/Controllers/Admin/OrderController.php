@@ -179,4 +179,72 @@ class OrderController extends Controller
         }
         return Order::STATUS_PROCESSING; // Default fallback
     }
+
+    public function export(Request $request)
+    {
+        // Query mengikuti filter di index
+        $q = \App\Models\Order::query()
+            ->with(['user:id,name,email', 'service:id,name,public_name', 'service.category:id,name'])
+            ->when($request->filled('q'), function ($qq) use ($request) {
+                $s = trim((string) $request->input('q'));
+                $qq->where(function ($w) use ($s) {
+                    $w->where('id', $s)
+                        ->orWhere('provider_order_id', 'like', "%{$s}%")
+                        ->orWhere('link', 'like', "%{$s}%")
+                        ->orWhereHas('user', fn($u) => $u->where('email', 'like', "%{$s}%")->orWhere('name', 'like', "%{$s}%"))
+                        ->orWhereHas('service', fn($sv) => $sv->where('name', 'like', "%{$s}%")->orWhere('public_name', 'like', "%{$s}%"));
+                });
+            })
+            ->when($request->filled('status'), fn($qq) => $qq->where('status', strtolower((string)$request->input('status'))))
+            ->orderByDesc('id');
+
+        $rows = $q->limit(20000)->get(); // batasi export agar ringan
+
+        // Siapkan CSV dalam memory
+        $headers = [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="orders_export_' . now()->format('Ymd_His') . '.csv"',
+        ];
+
+        $callback = function () use ($rows) {
+            $out = fopen('php://output', 'w');
+            // BOM UTF-8 agar Excel nyaman
+            fprintf($out, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+            fputcsv($out, [
+                'Order ID',
+                'User Email',
+                'User Name',
+                'Service',
+                'Category',
+                'Qty',
+                'Cost',
+                'Status',
+                'Provider Order ID',
+                'Link',
+                'Created At',
+                'Updated At'
+            ]);
+
+            foreach ($rows as $o) {
+                fputcsv($out, [
+                    $o->id,
+                    $o->user->email ?? '',
+                    $o->user->name ?? '',
+                    $o->service->public_name ?? $o->service->name ?? '',
+                    $o->service->category->name ?? '',
+                    $o->quantity,
+                    number_format((float)$o->cost, 2, '.', ''),
+                    $o->status,
+                    $o->provider_order_id,
+                    $o->link,
+                    optional($o->created_at)->toDateTimeString(),
+                    optional($o->updated_at)->toDateTimeString(),
+                ]);
+            }
+            fclose($out);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
 }
