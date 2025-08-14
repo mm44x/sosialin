@@ -42,9 +42,16 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         // Alias middleware kustom
         $middleware->alias([
-            'admin' => \App\Http\Middleware\EnsureAdmin::class,
+            'admin'  => \App\Http\Middleware\EnsureAdmin::class,
+            'active' => \App\Http\Middleware\EnsureUserActive::class, // bisa dipakai per-route bila perlu
         ]);
-        // (biarkan middleware default Laravel)
+
+        // Pastikan user non-aktif (banned) otomatis logout di SEMUA web routes
+        $middleware->appendToGroup('web', [
+            \App\Http\Middleware\EnsureUserActive::class,
+        ]);
+
+        // (biarkan middleware default Laravel lainnya)
     })
     ->withSchedule(function (Schedule $schedule) {
         $schedule->command('smm:poll-orders')
