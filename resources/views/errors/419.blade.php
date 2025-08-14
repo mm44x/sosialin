@@ -1,5 +1,7 @@
 @extends('errors.minimal', [
     'code' => 419,
-    'title' => 'Sesi berakhir',
-    'message' => 'Silakan muat ulang halaman dan coba lagi.',
+    'title' => 'Sesi Anda telah berakhir, seperti cinta yang telah usang.',
+    'message' => '
+    Ikan hiu makan donat,
+    Selamat, cintamu tamat!',
 ])
