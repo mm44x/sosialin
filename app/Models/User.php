@@ -6,13 +6,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, SoftDeletes;
 
     /**
-     * The attributes that are mass assignable.
+     * Mass assignable attributes.
      *
      * @var array<int, string>
      */
@@ -20,10 +21,13 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
+        'is_active',
     ];
 
+
     /**
-     * The attributes that should be hidden for serialization.
+     * Hidden attributes for arrays / JSON.
      *
      * @var array<int, string>
      */
@@ -33,7 +37,7 @@ class User extends Authenticatable
     ];
 
     /**
-     * Get the attributes that should be cast.
+     * Attribute casts.
      *
      * @return array<string, string>
      */
@@ -41,16 +45,32 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            'password'          => 'hashed',
+            'is_active'         => 'boolean',
         ];
     }
 
+    /**
+     * Relasi: satu user punya satu wallet.
+     */
     public function wallet()
     {
         return $this->hasOne(\App\Models\Wallet::class);
     }
+
+    /**
+     * Relasi: satu user punya banyak order.
+     */
     public function orders()
     {
         return $this->hasMany(\App\Models\Order::class);
+    }
+
+    /**
+     * Helper: cek apakah user admin.
+     */
+    public function isAdmin(): bool
+    {
+        return (string) $this->role === 'admin';
     }
 }

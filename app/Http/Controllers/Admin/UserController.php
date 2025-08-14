@@ -4,24 +4,24 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\Order;
+use App\Models\Transaction;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
 
 class UserController extends Controller
 {
-    /**
-     * List users dengan filter, sorting, dan pagination.
-     */
     public function index(Request $request)
     {
-        $q       = trim((string) $request->input('q', ''));                 // cari ID / email / nama
-        $sort    = $request->string('sort', 'id_desc')->toString();         // id_desc|id_asc|name_asc|balance_desc|orders_desc
+        $q       = trim((string) $request->input('q', ''));            // cari ID/Email/Nama
+        $sort    = $request->string('sort', 'id_desc')->toString();    // id_desc|id_asc|name_asc|balance_desc|orders_desc
         $perPage = max(10, min(50, (int) $request->integer('per_page', 20)));
 
-        // Base query
         $builder = User::query()
             ->select('users.*')
-            ->with(['wallet:id,user_id,balance']) // eager load 1:1
-            ->withCount('orders')                  // ->orders_count
+            ->with(['wallet:id,user_id,balance'])
+            ->withCount('orders')
             ->when($q !== '', function ($qq) use ($q) {
                 $qq->where(function ($w) use ($q) {
                     if (ctype_digit($q)) {
@@ -32,28 +32,22 @@ class UserController extends Controller
                 });
             });
 
-        // Sorting
         switch ($sort) {
             case 'id_asc':
                 $builder->orderBy('users.id', 'asc');
                 break;
-
             case 'name_asc':
-                $builder->orderBy('users.name', 'asc')->orderBy('users.id', 'asc');
+                $builder->orderBy('users.name', 'asc');
                 break;
-
             case 'orders_desc':
                 $builder->orderBy('orders_count', 'desc')->orderBy('users.id', 'desc');
                 break;
-
             case 'balance_desc':
-                // Join ringan untuk sorting berdasar saldo (fallback 0 bila null)
-                $builder->leftJoin('wallets as w', 'w.user_id', '=', 'users.id')
-                    ->orderByRaw('COALESCE(w.balance, 0) DESC')
+                $builder->leftJoin('wallets', 'wallets.user_id', '=', 'users.id')
+                    ->orderByRaw('COALESCE(wallets.balance, 0) DESC')
                     ->orderBy('users.id', 'desc')
-                    ->select('users.*'); // penting agar model tetap utuh
+                    ->select('users.*');
                 break;
-
             case 'id_desc':
             default:
                 $builder->orderBy('users.id', 'desc');
@@ -72,9 +66,68 @@ class UserController extends Controller
         ]);
     }
 
-    /**
-     * Export CSV mengikuti filter & sorting dari index.
-     */
+    public function show(User $user)
+    {
+        // saldo & ringkasan
+        $user->load(['wallet']);
+        $user->loadCount('orders');
+        $balance = (float) optional($user->wallet)->balance ?? 0.0;
+
+        // Order terbaru (10)
+        $recentOrders = Order::with([
+            'service:id,name,public_name,category_id',
+            'service.category:id,name',
+        ])
+            ->where('user_id', $user->id)
+            ->orderByDesc('id')
+            ->limit(10)
+            ->get();
+
+        // Transaksi wallet terbaru (10)
+        $recentTx = Transaction::where('user_id', $user->id)
+            ->orderByDesc('id')
+            ->limit(10)
+            ->get();
+
+        return view('admin.users.show', [
+            'user'         => $user,
+            'balance'      => $balance,
+            'recentOrders' => $recentOrders,
+            'recentTx'     => $recentTx,
+        ]);
+    }
+
+    public function edit(User $user)
+    {
+        return view('admin.users.edit', ['user' => $user]);
+    }
+
+    public function update(Request $request, User $user)
+    {
+        $data = $request->validate([
+            'name'                  => ['required', 'string', 'max:255'],
+            'email'                 => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'password'              => ['nullable', 'string', 'min:8', 'confirmed'],
+            'is_active'             => ['nullable', 'boolean'], // checkbox
+        ]);
+
+        $payload = [
+            'name'      => $data['name'],
+            'email'     => $data['email'],
+            'is_active' => $request->boolean('is_active'), // unchecked => false (banned)
+        ];
+
+        if (!empty($data['password'])) {
+            $payload['password'] = $data['password'];
+        }
+
+        $user->update($payload);
+
+        return redirect()
+            ->route('admin.users.index', $user)
+            ->with('status', 'User berhasil diperbarui' . ($payload['is_active'] ? '' : ' (Nonaktif/Banned)') . '.');
+    }
+
     public function export(Request $request)
     {
         $q    = trim((string) $request->input('q', ''));
@@ -98,29 +151,24 @@ class UserController extends Controller
             case 'id_asc':
                 $builder->orderBy('users.id', 'asc');
                 break;
-
             case 'name_asc':
-                $builder->orderBy('users.name', 'asc')->orderBy('users.id', 'asc');
+                $builder->orderBy('users.name', 'asc');
                 break;
-
             case 'orders_desc':
                 $builder->orderBy('orders_count', 'desc')->orderBy('users.id', 'desc');
                 break;
-
             case 'balance_desc':
-                $builder->leftJoin('wallets as w', 'w.user_id', '=', 'users.id')
-                    ->orderByRaw('COALESCE(w.balance, 0) DESC')
+                $builder->leftJoin('wallets', 'wallets.user_id', '=', 'users.id')
+                    ->orderByRaw('COALESCE(wallets.balance, 0) DESC')
                     ->orderBy('users.id', 'desc')
                     ->select('users.*');
                 break;
-
             case 'id_desc':
             default:
                 $builder->orderBy('users.id', 'desc');
                 break;
         }
 
-        // Batasi output agar ringan
         $rows = $builder->limit(20000)->get();
 
         $headers = [
@@ -130,13 +178,13 @@ class UserController extends Controller
 
         $callback = function () use ($rows) {
             $out = fopen('php://output', 'w');
-            // BOM UTF-8 agar nyaman di Excel
-            fprintf($out, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fprintf($out, chr(0xEF) . chr(0xBB) . chr(0xBF)); // BOM
 
             fputcsv($out, [
                 'User ID',
                 'Email',
                 'Name',
+                'Is Active',
                 'Balance (IDR)',
                 'Orders Count',
                 'Created At',
@@ -144,53 +192,21 @@ class UserController extends Controller
             ]);
 
             foreach ($rows as $u) {
-                $balance = (float) ((optional($u->wallet)->balance) ?? 0);
+                $balance = (float) optional($u->wallet)->balance ?? 0;
                 fputcsv($out, [
                     $u->id,
                     $u->email,
                     $u->name,
-                    number_format($balance, 2, '.', ''), // numeric-friendly
+                    (int) ($u->is_active ? 1 : 0),
+                    number_format($balance, 2, '.', ''),
                     (int) ($u->orders_count ?? 0),
                     optional($u->created_at)->toDateTimeString(),
                     optional($u->updated_at)->toDateTimeString(),
                 ]);
             }
-
             fclose($out);
         };
 
         return response()->stream($callback, 200, $headers);
-    }
-
-    public function show(\App\Models\User $user)
-    {
-        // saldo & ringkasan
-        $user->load(['wallet']);
-        $user->loadCount('orders');
-        $balance = (float) optional($user->wallet)->balance ?? 0.0;
-
-        // Order terbaru (10)
-        $recentOrders = \App\Models\Order::with([
-            'service:id,name,public_name,category_id',
-            'service.category:id,name',
-        ])
-            ->where('user_id', $user->id)
-            ->orderByDesc('id')
-            ->limit(10)
-            ->get();
-
-        // Transaksi wallet terbaru (10)
-        // Sesuaikan nama model jika berbeda di project Anda
-        $recentTx = \App\Models\Transaction::where('user_id', $user->id)
-            ->orderByDesc('id')
-            ->limit(10)
-            ->get();
-
-        return view('admin.users.show', [
-            'user'        => $user,
-            'balance'     => $balance,
-            'recentOrders' => $recentOrders,
-            'recentTx'    => $recentTx,
-        ]);
     }
 }

@@ -13,7 +13,7 @@
                         <label class="block text-sm font-medium">Cari (ID / Email / Nama)</label>
                         <input type="text" name="q" value="{{ $filters['q'] ?? '' }}"
                             class="mt-1 w-full h-10 px-3 py-2 rounded-xl border
-                                      bg-white dark:bg-slate-800 dark:text-white dark:border-slate-600"
+                                   bg-white dark:bg-slate-800 dark:text-white dark:border-slate-600"
                             placeholder="mis. 1001 atau email">
                     </div>
 
@@ -22,7 +22,7 @@
                         @php $sort = $filters['sort'] ?? 'id_desc'; @endphp
                         <select name="sort"
                             class="mt-1 w-full h-10 px-3 py-2 rounded-xl border
-                                       bg-white dark:bg-slate-800 dark:text-white dark:border-slate-600">
+                                   bg-white dark:bg-slate-800 dark:text-white dark:border-slate-600">
                             <option value="id_desc" @selected($sort === 'id_desc')>Terbaru</option>
                             <option value="id_asc" @selected($sort === 'id_asc')>Terlama</option>
                             <option value="name_asc" @selected($sort === 'name_asc')>Nama (A→Z)</option>
@@ -36,7 +36,7 @@
                         @php $pp = (int) ($filters['per_page'] ?? 20); @endphp
                         <select name="per_page"
                             class="mt-1 w-full h-10 px-3 py-2 rounded-xl border
-                                       bg-white dark:bg-slate-800 dark:text-white dark:border-slate-600">
+                                   bg-white dark:bg-slate-800 dark:text-white dark:border-slate-600">
                             @foreach ([10, 20, 30, 50] as $opt)
                                 <option value="{{ $opt }}" @selected($pp === $opt)>{{ $opt }}
                                 </option>
@@ -49,17 +49,17 @@
                         <div class="flex items-center gap-2 ml-auto">
                             <button type="submit"
                                 class="h-10 inline-flex items-center justify-center px-4 rounded-xl
-                                           bg-primary text-white hover:opacity-90 whitespace-nowrap">
+                                       bg-primary text-white hover:opacity-90 whitespace-nowrap">
                                 Terapkan
                             </button>
                             <a href="{{ route('admin.users.index') }}"
                                 class="h-10 inline-flex items-center justify-center px-4 rounded-xl border
-                                      dark:border-slate-600 hover:bg-primary/10 whitespace-nowrap">
+                                       dark:border-slate-600 hover:bg-primary/10 whitespace-nowrap">
                                 Reset
                             </a>
                             <a href="{{ route('admin.users.export', request()->query()) }}"
                                 class="h-10 inline-flex items-center justify-center px-4 rounded-xl border
-                                      dark:border-slate-600 hover:bg-primary/10 whitespace-nowrap">
+                                       dark:border-slate-600 hover:bg-primary/10 whitespace-nowrap">
                                 Export
                             </a>
                         </div>
@@ -102,6 +102,10 @@
                                         <a href="{{ route('admin.users.show', $u) }}"
                                             class="px-3 py-2 rounded-xl border dark:border-slate-600 hover:bg-primary/10 whitespace-nowrap">
                                             Detail
+                                        </a>
+                                        <a href="{{ route('admin.users.edit', $u) }}"
+                                            class="px-3 py-2 rounded-xl bg-primary text-white hover:opacity-90 whitespace-nowrap">
+                                            Edit
                                         </a>
                                         <a href="{{ route('admin.orders.index', ['q' => $u->email]) }}"
                                             class="px-3 py-2 rounded-xl border dark:border-slate-600 hover:bg-primary/10 whitespace-nowrap">
