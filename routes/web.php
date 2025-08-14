@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\ProviderController;
 use App\Http\Controllers\Admin\ServiceController;
+use App\Http\Controllers\Admin\TransactionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -87,6 +88,12 @@ Route::middleware(['auth', 'verified', 'admin'])
         Route::post('/orders/{order}/status-check', [AdminOrderController::class, 'statusCheck'])
             ->name('orders.status-check')
             ->middleware('throttle:order-status-check');
+
+        // Transactions (Admin monitor)
+        Route::get('/transactions', [TransactionController::class, 'index']) // @phpstan-ignore-line
+            ->name('transactions.index');
+        Route::get('/transactions/export', [TransactionController::class, 'export']) // @phpstan-ignore-line
+            ->name('transactions.export');
     });
 
 /*
