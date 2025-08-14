@@ -1,3 +1,4 @@
+<!-- Path: routes/web.php -->
 <?php
 
 use Illuminate\Support\Facades\Route;
@@ -78,6 +79,9 @@ Route::middleware(['auth', 'verified', 'admin'])
         // Orders (Admin monitor)
         Route::get('/orders/export', [AdminOrderController::class, 'export'])
             ->name('orders.export');
+        Route::post('/orders/bulk/status-check', [AdminOrderController::class, 'bulkStatusCheck'])
+            ->name('orders.bulk-status-check')
+            ->middleware('throttle:order-status-check');
         Route::get('/orders',         [AdminOrderController::class, 'index'])->name('orders.index');
         Route::get('/orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
         Route::post('/orders/{order}/status-check', [AdminOrderController::class, 'statusCheck'])
