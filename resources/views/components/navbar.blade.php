@@ -14,8 +14,8 @@
 
                 <a href="{{ route('orders.index') }}"
                     class="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 hover:bg-primary/10
-              focus:outline-none focus:ring-2 focus:ring-primary
-              {{ request()->routeIs('orders.*') ? 'bg-primary/20' : '' }}">
+                    focus:outline-none focus:ring-2 focus:ring-primary
+                    {{ request()->routeIs('orders.*') ? 'bg-primary/20' : '' }}">
                     Riwayat Order
                 </a>
             @else
@@ -34,43 +34,41 @@
                     <details class="relative">
                         <summary
                             class="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 cursor-pointer
-               hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary list-none">
+                            hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary list-none">
                             Admin
                         </summary>
                         <div
                             class="absolute right-0 mt-2 w-56 z-50 rounded-xl overflow-hidden
-                  bg-white dark:bg-slate-800 shadow-lg ring-1 ring-slate-200/60 dark:ring-white/10">
+                            bg-white dark:bg-slate-800 shadow-lg ring-1 ring-slate-200/60 dark:ring-white/10">
                             <a href="{{ route('admin.dashboard') }}"
                                 class="block px-4 py-2 text-sm hover:bg-primary/10
-                  {{ request()->routeIs('admin.dashboard') ? 'bg-primary/20' : '' }}">Dashboard</a>
+                                {{ request()->routeIs('admin.dashboard') ? 'bg-primary/20' : '' }}">Dashboard</a>
                             <a href="{{ route('admin.providers.index') }}"
                                 class="block px-4 py-2 text-sm hover:bg-primary/10
-                  {{ request()->routeIs('admin.providers.*') ? 'bg-primary/20' : '' }}">Providers</a>
+                                {{ request()->routeIs('admin.providers.*') ? 'bg-primary/20' : '' }}">Providers</a>
                             <a href="{{ route('admin.services.index') }}"
                                 class="block px-4 py-2 text-sm hover:bg-primary/10
-                  {{ request()->routeIs('admin.services.*') ? 'bg-primary/20' : '' }}">Services</a>
+                                {{ request()->routeIs('admin.services.*') ? 'bg-primary/20' : '' }}">Services</a>
                             <a href="{{ route('admin.categories.index') }}"
                                 class="block px-4 py-2 text-sm hover:bg-primary/10
-                  {{ request()->routeIs('admin.categories.*') ? 'bg-primary/20' : '' }}">Categories</a>
+                                {{ request()->routeIs('admin.categories.*') ? 'bg-primary/20' : '' }}">Categories</a>
                             <a href="{{ route('admin.api-logs.index') }}"
                                 class="block px-4 py-2 text-sm hover:bg-primary/10
-          {{ request()->routeIs('admin.api-logs.*') ? 'bg-primary/20' : '' }}">API
+                                {{ request()->routeIs('admin.api-logs.*') ? 'bg-primary/20' : '' }}">API
                                 Logs</a>
-
                         </div>
                     </details>
                 @endif
-                <div class="flex items-center gap-2">
-                    @php $saldo = optional(auth()->user()->wallet)->balance ?? 0; @endphp
-                    <div class="hidden sm:flex items-center gap-2">
-                        <span
-                            class="px-3 py-1 rounded-xl bg-white/60 dark:bg-white/10 ring-1 ring-slate-200/60 dark:ring-white/10 text-sm">
-                            Saldo: Rp {{ number_format($saldo, 2) }}
-                        </span>
-                    </div>
+
+                {{-- Saldo --}}
+                @php $saldo = optional(auth()->user()->wallet)->balance ?? 0; @endphp
+                <div class="hidden sm:flex items-center gap-2">
+                    <span
+                        class="px-3 py-1 rounded-xl bg-white/60 dark:bg-white/10 ring-1 ring-slate-200/60 dark:ring-white/10 text-sm">
+                        Saldo: Rp {{ number_format($saldo, 2) }}
+                    </span>
                 </div>
             @endauth
-
 
             {{-- Settings Dropdown (only when authenticated) --}}
             @auth
@@ -79,15 +77,15 @@
                         <x-slot name="trigger">
                             <button
                                 class="inline-flex items-center px-3 py-2 text-sm leading-4 font-medium rounded-md
-                       border border-slate-300 bg-white text-gray-700 hover:text-gray-900
-                       dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:text-white
-                       focus:outline-none transition ease-in-out duration-150">
+                                border border-slate-300 bg-white text-gray-700 hover:text-gray-900
+                                dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:text-white
+                                focus:outline-none transition ease-in-out duration-150">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24"
                                     fill="currentColor" aria-hidden="true">
                                     <path
                                         d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-5.33 0-8 2.67-8 5v1h16v-1c0-2.33-2.67-5-8-5Z" />
                                 </svg>
-                                <div> {{ Auth::user()->name }}</div>
+                                <div class="ml-2">{{ Auth::user()->name }}</div>
                                 <div class="ml-1">
                                     <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
                                         aria-hidden="true">
@@ -124,10 +122,10 @@
                         <x-slot name="trigger">
                             <button
                                 class="inline-flex items-center p-2 rounded-lg
-                 border border-slate-300 bg-white text-gray-700
-                 hover:text-gray-900
-                 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:text-white
-                 focus:outline-none transition">
+                                border border-slate-300 bg-white text-gray-700
+                                hover:text-gray-900
+                                dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:text-white
+                                focus:outline-none transition">
                                 <span class="sr-only">Open user menu</span>
                                 <!-- User icon -->
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24"
@@ -155,12 +153,23 @@
                 </div>
             @endauth
 
-
-            {{-- Theme Toggle --}}
+            {{-- Theme Toggle (Sun/Moon) --}}
             <button id="themeToggle" type="button"
                 class="ml-1 px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary"
-                aria-label="Toggle dark mode">
-                🌗
+                aria-label="Toggle theme" title="Toggle theme">
+                <span class="inline-flex items-center gap-2">
+                    <svg id="icon-sun" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 hidden" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor">
+                        <circle cx="12" cy="12" r="4" />
+                        <path
+                            d="M12 2v2m0 16v2m10-10h-2M4 12H2m15.536-7.536-1.414 1.414M7.05 16.95l-1.414 1.414M19.364 19.364l-1.414-1.414M7.05 7.05 5.636 5.636" />
+                    </svg>
+                    <svg id="icon-moon" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 hidden" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor">
+                        <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
+                    </svg>
+                    {{-- <span class="text-sm">Theme</span> --}}
+                </span>
             </button>
         </div>
     </div>

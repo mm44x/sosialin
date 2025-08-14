@@ -12,22 +12,19 @@
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
-    <!-- Scripts -->
     <!-- Anti-FOUC: set tema sedini mungkin -->
     <script>
         (function() {
             try {
                 const saved = localStorage.getItem('theme');
-                const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                if (saved === 'dark' || (!saved && systemDark)) {
-                    document.documentElement.classList.add('dark');
-                } else {
-                    document.documentElement.classList.remove('dark');
-                }
+                const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                const useDark = saved ? (saved === 'dark') : systemDark;
+                document.documentElement.classList.toggle('dark', !!useDark);
             } catch (e) {}
         })();
     </script>
 
+    <!-- Vite -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 
@@ -36,7 +33,6 @@
 
     <div class="min-h-screen">
         <x-navbar />
-        {{-- @include('layouts.navigation') --}}
 
         <!-- Page Heading -->
         @isset($header)
@@ -53,6 +49,7 @@
             {{ $slot }}
         </main>
     </div>
+
     @stack('scripts')
 </body>
 
