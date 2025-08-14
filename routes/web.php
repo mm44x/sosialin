@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\ProviderController;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\TransactionController;
+use App\Http\Controllers\Admin\UserController as AdminUserController;
 
 /*
 |--------------------------------------------------------------------------
@@ -56,6 +57,10 @@ Route::middleware(['auth', 'verified', 'admin'])
     ->group(function () {
         // Dashboard
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+        // Pengguna
+        Route::get('/users', [AdminUserController::class, 'index'])->name('users.index');
+        Route::get('/users/export', [AdminUserController::class, 'export'])->name('users.export');
 
         // Providers
         Route::get('/providers',                 [ProviderController::class, 'index'])->name('providers.index');
