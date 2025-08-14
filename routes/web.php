@@ -78,6 +78,9 @@ Route::middleware(['auth', 'verified', 'admin'])
         // Orders (Admin monitor)
         Route::get('/orders',         [AdminOrderController::class, 'index'])->name('orders.index');
         Route::get('/orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
+        Route::post('/orders/{order}/status-check', [AdminOrderController::class, 'statusCheck'])
+            ->name('orders.status-check')
+            ->middleware('throttle:order-status-check');
     });
 
 /*

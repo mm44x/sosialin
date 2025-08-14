@@ -45,7 +45,6 @@
                             <th class="py-2 px-4">Qty</th>
                             <th class="py-2 px-4">Biaya</th>
                             <th class="py-2 px-4">Status</th>
-                            <th class="py-2 px-4">Provider ID</th>
                             <th class="py-2 px-4">Updated</th>
                             <th class="py-2 px-4"></th>
                         </tr>
@@ -103,8 +102,6 @@
                                         {{ ucfirst($st) ?: 'Unknown' }}
                                     </span>
                                 </td>
-
-                                <td class="py-2 px-4">{{ $o->provider_order_id ?? '—' }}</td>
                                 <td class="py-2 px-4">{{ $o->updated_at->diffForHumans() }}</td>
                                 <td class="py-2 px-4">
                                     <a href="{{ route('orders.show', $o) }}"

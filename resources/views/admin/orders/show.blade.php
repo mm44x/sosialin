@@ -105,20 +105,17 @@
                 {{-- Aksi bawah kartu detail --}}
                 <div class="mt-6 flex flex-wrap gap-3">
                     <a href="{{ route('admin.orders.index') }}"
-                        class="px-4 py-2 rounded-xl border dark:border-slate-600 hover:bg-primary/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                        class="px-4 py-2 rounded-xl border dark:border-slate-600 hover:bg-primary/10">
                         Kembali
                     </a>
 
-                    @unless (in_array($st, ['completed', 'error']))
-                        @if ($order->provider_order_id)
-                            <form method="POST" action="{{ route('orders.status-check', $order) }}" class="inline-flex">
-                                @csrf
-                                <button
-                                    class="px-4 py-2 rounded-xl bg-primary text-white hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary">
-                                    Cek status sekarang
-                                </button>
-                            </form>
-                        @endif
+                    @unless (in_array($order->status, ['completed', 'error']))
+                        <form method="POST" action="{{ route('admin.orders.status-check', $order) }}" class="inline-flex">
+                            @csrf
+                            <button class="px-4 py-2 rounded-xl bg-primary text-white hover:opacity-90">
+                                Cek status sekarang
+                            </button>
+                        </form>
                     @endunless
                 </div>
             </div>
