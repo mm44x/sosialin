@@ -1,3 +1,4 @@
+{{-- Path : resources/views/admin/orders/index.blade.php --}}
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl dark:text-white">Admin — Orders</h2>
