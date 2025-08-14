@@ -43,6 +43,11 @@
                             <a href="{{ route('admin.dashboard') }}"
                                 class="block px-4 py-2 text-sm hover:bg-primary/10
                                 {{ request()->routeIs('admin.dashboard') ? 'bg-primary/20' : '' }}">Dashboard</a>
+
+                            <a href="{{ route('admin.orders.index') }}"
+                                class="block px-4 py-2 text-sm hover:bg-primary/10
+                                {{ request()->routeIs('admin.orders.*') ? 'bg-primary/20' : '' }}">Riwayat
+                                Order</a>
                             <a href="{{ route('admin.providers.index') }}"
                                 class="block px-4 py-2 text-sm hover:bg-primary/10
                                 {{ request()->routeIs('admin.providers.*') ? 'bg-primary/20' : '' }}">Providers</a>
