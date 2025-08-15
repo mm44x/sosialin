@@ -61,11 +61,40 @@ class WalletController extends Controller
     {
         $perPage = max(10, min(50, (int) $request->integer('per_page', 20)));
 
-        $rows = \App\Models\Transaction::where('user_id', $request->user()->id)
-            ->orderByDesc('id')
-            ->paginate($perPage)
-            ->withQueryString();
+        $query = \App\Models\Transaction::where('user_id', $request->user()->id);
 
+        // Filter by date range
+        if ($request->filled('start_date')) {
+            $query->whereDate('created_at', '>=', $request->start_date);
+        }
+        if ($request->filled('end_date')) {
+            $query->whereDate('created_at', '<=', $request->end_date);
+        }
+
+        // Filter by transaction type
+        if ($request->filled('type')) {
+            $query->where('type', $request->type);
+        }
+
+        // Handle sorting
+        if ($request->filled('sort')) {
+            $order = $request->input('order', 'desc');
+
+            switch ($request->sort) {
+                case 'date':
+                    $query->orderBy('created_at', $order);
+                    break;
+                case 'amount':
+                    $query->orderBy('amount', $order);
+                    break;
+                default:
+                    $query->orderByDesc('id');
+            }
+        } else {
+            $query->orderByDesc('id');
+        }
+
+        $rows = $query->paginate($perPage)->withQueryString();
         $balance = (float) optional($request->user()->wallet)->balance ?? 0.0;
 
         return view('wallet.transactions', [
