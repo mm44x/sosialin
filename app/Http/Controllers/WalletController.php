@@ -2,44 +2,75 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Topup;
 use Illuminate\Http\Request;
-use App\Services\WalletService;
-use App\Models\Transaction;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class WalletController extends Controller
 {
-    public function __construct()
+    public function create(Request $request)
     {
-        // Laravel 11 tidak pakai $this->middleware() bawaan Controller
-        // Lindungi via route group (lihat routes/web.php)
+        // Bisa ambil instruksi dari config/env — di sini contoh hardcoded sederhana
+        $paymentInfo = [
+            'bank_accounts' => [
+                ['bank' => 'BCA', 'name' => 'PT Sosialin', 'number' => '1234567890'],
+                ['bank' => 'BNI', 'name' => 'PT Sosialin', 'number' => '9876543210'],
+            ],
+            'qris_image' => 'images/qris-example.png', // letakkan file di public/images/ atau storage symlink
+            'note_html'  => '<b>Catatan:</b> Sertakan nominal tepat & unggah bukti yang jelas.',
+        ];
+
+        return view('wallet.topup', compact('paymentInfo'));
     }
 
-    public function create()
-    {
-        return view('wallet.topup');
-    }
-
-    public function store(Request $request, WalletService $wallet)
+    public function store(Request $request)
     {
         $data = $request->validate([
-            'amount' => ['required', 'numeric', 'min:1000'], // atur minimal sesuai kebijakan
-            'note'   => ['nullable', 'string', 'max:190'],
+            'amount' => ['required', 'numeric', 'min:1000', 'max:100000000'],
+            'method' => ['nullable', 'string', 'max:30'], // bank|qris|other
+            'note'   => ['nullable', 'string', 'max:2000'],
+            'proof'  => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'], // <=5MB
         ]);
 
-        $amount = round((float) $data['amount'], 2);
-        $wallet->credit($request->user()->id, $amount, 'topup', [
-            'note' => $data['note'] ?? null,
+        // Simpan bukti
+        $path = $request->file('proof')->store('topups', 'public');
+
+        // Reference unik
+        $ref = 'TP' . now()->format('YmdHis') . strtoupper(Str::random(4));
+
+        Topup::create([
+            'user_id'    => $request->user()->id,
+            'reference'  => $ref,
+            'method'     => $data['method'] ?? null,
+            'amount'     => (float)$data['amount'],
+            'status'     => 'pending',
+            'proof_path' => $path,
+            'note'       => $data['note'] ?? null,
+            'meta'       => [
+                'ip'      => $request->ip(),
+                'ua'      => substr((string)$request->userAgent(), 0, 255),
+                'version' => 1,
+            ],
         ]);
 
-        return redirect()->route('dashboard')->with('status', 'Top-up berhasil: Rp ' . number_format($amount, 2));
+        return back()->with('status', "Request top up terkirim. Ref: {$ref}. Mohon tunggu verifikasi admin.");
     }
 
     public function transactions(Request $request)
     {
-        $tx = Transaction::where('user_id', $request->user()->id)
-            ->orderByDesc('id')
-            ->paginate(15);
+        $perPage = max(10, min(50, (int) $request->integer('per_page', 20)));
 
-        return view('wallet.transactions', ['tx' => $tx]);
+        $rows = \App\Models\Transaction::where('user_id', $request->user()->id)
+            ->orderByDesc('id')
+            ->paginate($perPage)
+            ->withQueryString();
+
+        $balance = (float) optional($request->user()->wallet)->balance ?? 0.0;
+
+        return view('wallet.transactions', [
+            'rows'    => $rows,
+            'balance' => $balance,
+        ]);
     }
 }

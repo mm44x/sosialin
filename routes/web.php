@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\ProviderController;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\TransactionController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Admin\TopupController as AdminTopupController;
 
 /*
 |--------------------------------------------------------------------------
@@ -109,6 +110,11 @@ Route::middleware(['auth', 'verified', 'admin'])
             ->name('transactions.index');
         Route::get('/transactions/export', [TransactionController::class, 'export']) // @phpstan-ignore-line
             ->name('transactions.export');
+
+        Route::get('/topups',                [AdminTopupController::class, 'index'])->name('topups.index');
+        Route::get('/topups/{topup}',        [AdminTopupController::class, 'show'])->name('topups.show');
+        Route::post('/topups/{topup}/approve', [AdminTopupController::class, 'approve'])->name('topups.approve');
+        Route::post('/topups/{topup}/reject', [AdminTopupController::class, 'reject'])->name('topups.reject');
     });
 
 /*
@@ -140,15 +146,25 @@ Route::middleware(['auth', 'verified'])->group(function () {
 | User — Wallet
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/wallet/topup',        [WalletController::class, 'create'])->name('wallet.topup');
+// Route::middleware(['auth', 'verified'])->group(function () {
+//     Route::get('/wallet/topup',        [WalletController::class, 'create'])->name('wallet.topup');
 
-    // Submit topup (opsional: rate-limit "topup-submit" bila sudah didefinisikan)
-    Route::post('/wallet/topup',       [WalletController::class, 'store'])
+//     // Submit topup (opsional: rate-limit "topup-submit" bila sudah didefinisikan)
+//     Route::post('/wallet/topup',       [WalletController::class, 'store'])
+//         ->name('wallet.topup.store')
+//         ->middleware('throttle:topup-submit');
+
+//     Route::get('/wallet/transactions', [WalletController::class, 'transactions'])->name('wallet.transactions');
+
+// });
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/wallet/topup',  [\App\Http\Controllers\WalletController::class, 'create'])->name('wallet.topup');
+    Route::post('/wallet/topup', [\App\Http\Controllers\WalletController::class, 'store'])
         ->name('wallet.topup.store')
         ->middleware('throttle:topup-submit');
 
-    Route::get('/wallet/transactions', [WalletController::class, 'transactions'])->name('wallet.transactions');
+    Route::get('/wallet/transactions', [\App\Http\Controllers\WalletController::class, 'transactions'])
+        ->name('wallet.transactions');
 });
 
 require __DIR__ . '/auth.php';
