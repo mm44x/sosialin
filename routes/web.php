@@ -115,6 +115,11 @@ Route::middleware(['auth', 'verified', 'admin'])
         Route::get('/topups/{topup}',        [AdminTopupController::class, 'show'])->name('topups.show');
         Route::post('/topups/{topup}/approve', [AdminTopupController::class, 'approve'])->name('topups.approve');
         Route::post('/topups/{topup}/reject', [AdminTopupController::class, 'reject'])->name('topups.reject');
+
+        // ... dalam group admin (auth, verified, admin)
+        Route::resource('payment-methods', \App\Http\Controllers\Admin\PaymentMethodController::class)
+            ->except(['show'])
+            ->names('payment-methods');
     });
 
 /*
