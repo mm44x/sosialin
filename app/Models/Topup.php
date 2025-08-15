@@ -37,6 +37,11 @@ class Topup extends Model
         return $this->belongsTo(User::class, 'reviewed_by');
     }
 
+    public function paymentMethod(): BelongsTo
+    {
+        return $this->belongsTo(PaymentMethod::class);
+    }
+
     // Helpers
     public function isPending(): bool
     {
