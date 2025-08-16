@@ -67,6 +67,22 @@ class User extends Authenticatable
     }
 
     /**
+     * Relasi: satu user punya banyak transaction.
+     */
+    public function transactions()
+    {
+        return $this->hasMany(\App\Models\Transaction::class);
+    }
+
+    /**
+     * Relasi: satu user punya banyak ticket.
+     */
+    public function tickets()
+    {
+        return $this->hasMany(\App\Models\Ticket::class);
+    }
+
+    /**
      * Helper: cek apakah user admin.
      */
     public function isAdmin(): bool

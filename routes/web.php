@@ -31,9 +31,7 @@ Route::get('/services', [HomeController::class, 'services'])->name('services.ind
 | Dashboard Bawaan (setelah login & verifikasi)
 |--------------------------------------------------------------------------
 */
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 
 /*
 |--------------------------------------------------------------------------
