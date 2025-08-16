@@ -166,6 +166,29 @@
                         @csrf
 
                         <div class="space-y-2">
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300"
+                                for="attachment">
+                                Lampiran (Opsional)
+                            </label>
+                            <input type="file" id="attachment" name="attachment"
+                                accept=".jpg,.jpeg,.png,.webp,.pdf"
+                                class="block w-full text-sm file:mr-4 file:px-4 file:py-2.5 file:rounded-xl
+                                       file:border-0 file:bg-primary file:text-white file:font-medium
+                                       file:hover:bg-primary/90 file:transition-colors
+                                       border border-slate-200 dark:border-slate-700 rounded-xl
+                                       bg-white dark:bg-slate-800 text-slate-900 dark:text-white
+                                       focus:ring-2 focus:ring-primary/20 dark:focus:ring-primary/20 
+                                       focus:border-primary/20 dark:focus:border-primary/20
+                                       transition-colors" />
+                            <p class="text-xs text-slate-500 dark:text-slate-400">
+                                JPG, PNG, WEBP, atau PDF maksimal 5MB
+                            </p>
+                            @error('attachment')
+                                <p class="text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div class="space-y-2">
                             <label class="block text-sm font-medium text-slate-700 dark:text-slate-300" for="message">
                                 Balasan Anda
                             </label>
@@ -182,61 +205,34 @@
                             @enderror
                         </div>
 
-                        <div class="grid md:grid-cols-2 gap-6">
-                            <div class="space-y-2">
-                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300"
-                                    for="attachment">
-                                    Lampiran (Opsional)
-                                </label>
-                                <input type="file" id="attachment" name="attachment"
-                                    accept=".jpg,.jpeg,.png,.webp,.pdf"
-                                    class="block w-full text-sm file:mr-4 file:px-4 file:py-2.5 file:rounded-xl
-                                           file:border-0 file:bg-primary file:text-white file:font-medium
-                                           file:hover:bg-primary/90 file:transition-colors
-                                           border border-slate-200 dark:border-slate-700 rounded-xl
-                                           bg-white dark:bg-slate-800 text-slate-900 dark:text-white
-                                           focus:ring-2 focus:ring-primary/20 dark:focus:ring-primary/20 
-                                           focus:border-primary/20 dark:focus:border-primary/20
-                                           transition-colors" />
-                                <p class="text-xs text-slate-500 dark:text-slate-400">
-                                    JPG, PNG, WEBP, atau PDF maksimal 5MB
-                                </p>
-                                @error('attachment')
-                                    <p class="text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
-                                @enderror
-                            </div>
-
-                            <div class="flex flex-col justify-end">
-                                <div class="flex gap-3">
-                                    <a href="{{ route('tickets.index') }}"
-                                        class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl 
-                                               border border-slate-200 dark:border-slate-700
-                                               hover:border-primary/20 dark:hover:border-primary/20 
-                                               hover:bg-primary/5 dark:hover:bg-primary/5
-                                               text-slate-700 dark:text-slate-300
-                                               transition-all duration-300">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                            viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                                        </svg>
-                                        <span>Kembali</span>
-                                    </a>
-                                    <button type="submit"
-                                        class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl 
-                                               bg-gradient-to-r from-primary to-purple-600 
-                                               text-white font-medium shadow-sm 
-                                               hover:shadow-md transition-all duration-300 hover:scale-105
-                                               focus:outline-none focus:ring-2 focus:ring-primary/20">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                            viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                                        </svg>
-                                        <span>Kirim Balasan</span>
-                                    </button>
-                                </div>
-                            </div>
+                        <div class="flex gap-3">
+                            <a href="{{ route('tickets.index') }}"
+                                class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl 
+                                       border border-slate-200 dark:border-slate-700
+                                       hover:border-primary/20 dark:hover:border-primary/20 
+                                       hover:bg-primary/5 dark:hover:bg-primary/5
+                                       text-slate-700 dark:text-slate-300
+                                       transition-all duration-300">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                                </svg>
+                                <span>Kembali</span>
+                            </a>
+                            <button type="submit"
+                                class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl 
+                                       bg-gradient-to-r from-primary to-purple-600 
+                                       text-white font-medium shadow-sm 
+                                       hover:shadow-md transition-all duration-300 hover:scale-105
+                                       focus:outline-none focus:ring-2 focus:ring-primary/20">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                </svg>
+                                <span>Kirim Balasan</span>
+                            </button>
                         </div>
                     </form>
                 </div>
