@@ -120,6 +120,17 @@ Route::middleware(['auth', 'verified', 'admin'])
         Route::resource('payment-methods', \App\Http\Controllers\Admin\PaymentMethodController::class)
             ->except(['show'])
             ->names('payment-methods');
+
+        // Tickets (Admin)
+        Route::get('/tickets',                [\App\Http\Controllers\Admin\TicketController::class, 'index'])->name('tickets.index');
+        Route::get('/tickets/{ticket}',       [\App\Http\Controllers\Admin\TicketController::class, 'show'])->name('tickets.show');
+        Route::post('/tickets/{ticket}/reply',[\App\Http\Controllers\Admin\TicketController::class, 'reply'])
+            ->name('tickets.reply')
+            ->middleware('throttle:ticket-reply');
+        Route::put('/tickets/{ticket}/status',[\App\Http\Controllers\Admin\TicketController::class, 'updateStatus'])->name('tickets.status');
+        // (opsional) download lampiran
+        Route::get('/ticket-messages/{message}/download', [\App\Http\Controllers\Admin\TicketController::class, 'download'])
+            ->name('tickets.download');
     });
 
 /*
@@ -175,22 +186,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 // USER — Tickets
 Route::middleware(['auth','verified'])->group(function () {
-    Route::get('/tickets',               [\App\Http\Controllers\TicketController::class, 'index'])->name('tickets.index');
-    Route::get('/tickets/create',        [\App\Http\Controllers\TicketController::class, 'create'])->name('tickets.create');
-    Route::post('/tickets',              [\App\Http\Controllers\TicketController::class, 'store'])->name('tickets.store');
-    Route::get('/tickets/{ticket}',      [\App\Http\Controllers\TicketController::class, 'show'])->name('tickets.show');
-    Route::post('/tickets/{ticket}/reply', [\App\Http\Controllers\TicketController::class, 'reply'])->name('tickets.reply');
-    Route::post('/tickets/{ticket}/close', [\App\Http\Controllers\TicketController::class, 'close'])->name('tickets.close');
+    // Tickets (User)
+    Route::get('/tickets',                 [\App\Http\Controllers\TicketController::class, 'index'])->name('tickets.index');
+    Route::get('/tickets/create',          [\App\Http\Controllers\TicketController::class, 'create'])->name('tickets.create');
+    Route::post('/tickets',                [\App\Http\Controllers\TicketController::class, 'store'])
+        ->name('tickets.store')->middleware('throttle:ticket-create');
+    Route::get('/tickets/{ticket}',        [\App\Http\Controllers\TicketController::class, 'show'])->name('tickets.show');
+    Route::post('/tickets/{ticket}/reply', [\App\Http\Controllers\TicketController::class, 'reply'])
+        ->name('tickets.reply')->middleware('throttle:ticket-reply');
+    Route::get('/ticket-messages/{message}/download', [\App\Http\Controllers\TicketController::class, 'download'])
+        ->name('tickets.download');
 });
 
-// ADMIN — Tickets
-Route::middleware(['auth','verified','admin'])
-    ->prefix('admin')->name('admin.')
-    ->group(function () {
-        Route::get('/tickets',                 [\App\Http\Controllers\Admin\TicketController::class, 'index'])->name('tickets.index');
-        Route::get('/tickets/{ticket}',        [\App\Http\Controllers\Admin\TicketController::class, 'show'])->name('tickets.show');
-        Route::post('/tickets/{ticket}/reply', [\App\Http\Controllers\Admin\TicketController::class, 'reply'])->name('tickets.reply');
-        Route::post('/tickets/{ticket}/status',[\App\Http\Controllers\Admin\TicketController::class, 'setStatus'])->name('tickets.status');
-    });
+
 
 require __DIR__ . '/auth.php';

@@ -2,115 +2,144 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Order;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class TicketController extends Controller
 {
+    /** List tiket milik user */
     public function index(Request $request)
     {
-        $rows = Ticket::with(['order:id', 'messages' => fn($q) => $q->latest()->limit(1)])
-            ->where('user_id', $request->user()->id)
-            ->orderByDesc('last_message_at')
-            ->orderByDesc('id')
-            ->paginate(20)
+        $q        = trim((string) $request->input('q', ''));      // id / subject / order_id
+        $status   = trim((string) $request->input('status', '')); // open|pending|closed
+        $perPage  = max(10, min(50, (int) $request->integer('per_page', 20)));
+        $uid      = (int) $request->user()->id;
+
+        $rows = Ticket::query()
+            ->where('user_id', $uid)
+            ->when($q !== '', function ($qq) use ($q) {
+                $qq->where(function ($w) use ($q) {
+                    if (ctype_digit($q)) {
+                        $w->orWhere('tickets.id', (int) $q)
+                          ->orWhere('tickets.order_id', (int) $q);
+                    }
+                    $w->orWhere('tickets.subject', 'like', "%{$q}%");
+                });
+            })
+            ->when($status !== '', fn($qq) => $qq->where('tickets.status', $status))
+            ->orderByDesc('tickets.last_message_at')
+            ->orderByDesc('tickets.id')
+            ->paginate($perPage)
             ->withQueryString();
 
-        return view('tickets.index', compact('rows'));
+        return view('tickets.index', [
+            'rows'    => $rows,
+            'filters' => ['q' => $q, 'status' => $status, 'per_page' => $perPage],
+        ]);
     }
 
-    public function create(Request $request)
+    /** Form buat tiket */
+    public function create()
     {
-        // Tidak ada dropdown/auto-list order. Hanya tampilkan form kosong.
         return view('tickets.create');
     }
 
+    /** Simpan tiket baru */
     public function store(Request $request)
     {
         $data = $request->validate([
-            'subject'  => ['required', 'string', 'max:255'],
-            'order_id' => ['nullable', 'integer', 'exists:orders,id'],
-            'message'  => ['required', 'string', 'max:5000'],
+            'subject'    => ['required', 'string', 'max:150'],
+            'order_id'   => ['nullable', 'integer', 'min:1'],
+            'message'    => ['required', 'string', 'max:5000'],
+            'attachment' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
         ]);
 
-        // Jika user mengisi order_id, pastikan order tersebut milik user
-        if (!empty($data['order_id'])) {
-            $own = Order::where('id', $data['order_id'])
-                ->where('user_id', $request->user()->id)
-                ->exists();
-            abort_unless($own, 422, 'Order tidak valid atau bukan milik Anda.');
+        $path = null;
+        if ($request->hasFile('attachment')) {
+            $path = $request->file('attachment')->store('tickets', 'public');
         }
 
-        $ticket = null;
+        $ticket = Ticket::create([
+            'user_id'         => $request->user()->id,
+            'subject'         => $data['subject'],
+            'order_id'        => $data['order_id'] ?? null,
+            'status'          => 'open',
+            'last_message_at' => now(),
+            'last_message_by' => 'user',
+            'meta'            => ['ua' => substr((string)$request->userAgent(), 0, 255)],
+        ]);
 
-        DB::transaction(function () use ($request, $data, &$ticket) {
-            $ticket = Ticket::create([
-                'user_id'         => $request->user()->id,
-                'subject'         => $data['subject'],
-                'order_id'        => $data['order_id'] ?? null,
-                'status'          => Ticket::STATUS_OPEN,
-                'last_message_at' => now(),
-            ]);
-
-            TicketMessage::create([
-                'ticket_id' => $ticket->id,
-                'user_id'   => $request->user()->id,
-                'is_admin'  => false,
-                'body'      => $data['message'],
-            ]);
-        });
+        TicketMessage::create([
+            'ticket_id'       => $ticket->id,
+            'sender'          => 'user',
+            'user_id'         => $request->user()->id,
+            'message'         => $data['message'],
+            'attachment_path' => $path,
+        ]);
 
         return redirect()->route('tickets.show', $ticket)
-            ->with('status', 'Tiket dibuat. Tim kami akan menindaklanjuti.');
+            ->with('status', 'Tiket berhasil dibuat.');
     }
 
-    public function show(Request $request, Ticket $ticket)
+    /** Detail & thread tiket (hanya pemilik) */
+    public function show(Ticket $ticket, Request $request)
     {
         abort_if($ticket->user_id !== $request->user()->id, 403);
-        $ticket->load(['order', 'messages.user:id,name']);
-        return view('tickets.show', compact('ticket'));
+
+        $messages = TicketMessage::where('ticket_id', $ticket->id)
+            ->orderBy('id')
+            ->get();
+
+        return view('tickets.show', compact('ticket', 'messages'));
     }
 
+    /** Balas tiket (user) */
     public function reply(Request $request, Ticket $ticket)
     {
         abort_if($ticket->user_id !== $request->user()->id, 403);
-        abort_if(!$ticket->isOpen(), 422, 'Tiket sudah ditutup.');
 
         $data = $request->validate([
-            'message' => ['required', 'string', 'max:5000'],
+            'message'    => ['nullable', 'string', 'max:5000'],
+            'attachment' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
         ]);
 
-        DB::transaction(function () use ($request, $ticket, $data) {
-            TicketMessage::create([
-                'ticket_id' => $ticket->id,
-                'user_id'   => $request->user()->id,
-                'is_admin'  => false,
-                'body'      => $data['message'],
-            ]);
+        if ((!$data['message'] || trim($data['message']) === '') && !$request->hasFile('attachment')) {
+            return back()->with('status', 'Isi pesan atau lampirkan berkas.');
+        }
 
-            $ticket->update(['last_message_at' => now()]);
-        });
+        $path = null;
+        if ($request->hasFile('attachment')) {
+            $path = $request->file('attachment')->store('tickets', 'public');
+        }
+
+        TicketMessage::create([
+            'ticket_id'       => $ticket->id,
+            'sender'          => 'user',
+            'user_id'         => $request->user()->id,
+            'message'         => $data['message'] ?? '',
+            'attachment_path' => $path,
+        ]);
+
+        // Balasan user akan “membuka kembali” tiket jika status closed
+        $ticket->update([
+            'status'          => $ticket->status === 'closed' ? 'open' : $ticket->status,
+            'last_message_at' => now(),
+            'last_message_by' => 'user',
+        ]);
 
         return back()->with('status', 'Balasan terkirim.');
     }
 
-    public function close(Request $request, Ticket $ticket)
+    /** Download lampiran (user hanya boleh miliknya) */
+    public function download(TicketMessage $message, Request $request)
     {
+        $ticket = Ticket::findOrFail($message->ticket_id);
         abort_if($ticket->user_id !== $request->user()->id, 403);
 
-        $ticket->update(['status' => Ticket::STATUS_CLOSED]);
+        if (!$message->attachment_path) abort(404);
 
-        TicketMessage::create([
-            'ticket_id' => $ticket->id,
-            'user_id'   => null,
-            'is_admin'  => false,
-            'body'      => 'Ticket ditutup oleh pemilik.',
-            'meta'      => ['system' => true],
-        ]);
-
-        return redirect()->route('tickets.index')->with('status', 'Tiket ditutup.');
+        return Storage::disk('public')->download($message->attachment_path);
     }
 }

@@ -37,6 +37,9 @@ return Application::configure(basePath: dirname(__DIR__))
                 // Maks 10 kali/menit per admin/user
                 return Limit::perMinute(10)->by($request->user()?->id ?? $request->ip());
             });
+
+            RateLimiter::for('ticket-create', fn($r) => Limit::perMinute(6)->by($r->user()?->id ?? $r->ip()));
+            RateLimiter::for('ticket-reply', fn (Request $r) => Limit::perMinute(12)->by($r->user()?->id ?? $r->ip()));
         }
     )
     ->withMiddleware(function (Middleware $middleware) {
