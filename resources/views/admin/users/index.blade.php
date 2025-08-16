@@ -29,91 +29,91 @@
 
                 <form method="GET" class="space-y-4">
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
-                        {{-- Cari --}}
+                    {{-- Cari --}}
                         <div class="lg:col-span-2">
                             <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                                 Cari (ID / Email / Nama)
                             </label>
-                            <input type="text" name="q" value="{{ $filters['q'] ?? '' }}"
+                        <input type="text" name="q" value="{{ $filters['q'] ?? '' }}"
                                 class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700
                                        bg-white dark:bg-slate-800 text-slate-900 dark:text-white
                                        placeholder-slate-400 dark:placeholder-slate-500
                                        focus:ring-2 focus:ring-primary/20 dark:focus:ring-primary/20 
                                        focus:border-primary/20 dark:focus:border-primary/20
                                        transition-colors"
-                                placeholder="mis. 1001 atau email">
-                        </div>
+                            placeholder="mis. 1001 atau email">
+                    </div>
 
-                        {{-- Role --}}
-                        <div>
+                    {{-- Role --}}
+                    <div>
                             <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Role</label>
-                            @php $roleF = $filters['role'] ?? ''; @endphp
-                            <select name="role"
+                        @php $roleF = $filters['role'] ?? ''; @endphp
+                        <select name="role"
                                 class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700
                                        bg-white dark:bg-slate-800 text-slate-900 dark:text-white
                                        focus:ring-2 focus:ring-primary/20 dark:focus:ring-primary/20 
                                        focus:border-primary/20 dark:focus:border-primary/20
                                        transition-colors">
                                 <option value="" @selected($roleF === '')>Semua Role</option>
-                                <option value="user" @selected($roleF === 'user')>User</option>
-                                <option value="admin" @selected($roleF === 'admin')>Admin</option>
-                            </select>
-                        </div>
+                            <option value="user" @selected($roleF === 'user')>User</option>
+                            <option value="admin" @selected($roleF === 'admin')>Admin</option>
+                        </select>
+                    </div>
 
-                        {{-- Status --}}
-                        <div>
+                    {{-- Status --}}
+                    <div>
                             <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Status</label>
-                            @php $statusF = $filters['status'] ?? ''; @endphp
-                            <select name="status"
+                        @php $statusF = $filters['status'] ?? ''; @endphp
+                        <select name="status"
                                 class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700
                                        bg-white dark:bg-slate-800 text-slate-900 dark:text-white
                                        focus:ring-2 focus:ring-primary/20 dark:focus:ring-primary/20 
                                        focus:border-primary/20 dark:focus:border-primary/20
                                        transition-colors">
                                 <option value="" @selected($statusF === '')>Semua Status</option>
-                                <option value="active" @selected($statusF === 'active')>Active</option>
-                                <option value="banned" @selected($statusF === 'banned')>Banned</option>
-                            </select>
-                        </div>
-
-                        {{-- Urutkan --}}
-                        <div>
-                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Urutkan</label>
-                            @php $sort = $filters['sort'] ?? 'id_desc'; @endphp
-                            <select name="sort"
-                                class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700
-                                       bg-white dark:bg-slate-800 text-slate-900 dark:text-white
-                                       focus:ring-2 focus:ring-primary/20 dark:focus:ring-primary/20 
-                                       focus:border-primary/20 dark:focus:border-primary/20
-                                       transition-colors">
-                                <option value="id_desc" @selected($sort === 'id_desc')>Terbaru</option>
-                                <option value="id_asc" @selected($sort === 'id_asc')>Terlama</option>
-                                <option value="name_asc" @selected($sort === 'name_asc')>Nama (A→Z)</option>
-                                <option value="balance_desc" @selected($sort === 'balance_desc')>Saldo Tertinggi</option>
-                                <option value="orders_desc" @selected($sort === 'orders_desc')>Orders Terbanyak</option>
-                            </select>
-                        </div>
-
-                        {{-- Per halaman --}}
-                        <div>
-                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Per Halaman</label>
-                            @php $pp = (int) ($filters['per_page'] ?? 20); @endphp
-                            <select name="per_page"
-                                class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700
-                                       bg-white dark:bg-slate-800 text-slate-900 dark:text-white
-                                       focus:ring-2 focus:ring-primary/20 dark:focus:ring-primary/20 
-                                       focus:border-primary/20 dark:focus:border-primary/20
-                                       transition-colors">
-                                @foreach ([10, 20, 30, 50] as $opt)
-                                    <option value="{{ $opt }}" @selected($pp === $opt)>{{ $opt }}</option>
-                                @endforeach
-                            </select>
-                        </div>
+                            <option value="active" @selected($statusF === 'active')>Active</option>
+                            <option value="banned" @selected($statusF === 'banned')>Banned</option>
+                        </select>
                     </div>
+
+                    {{-- Urutkan --}}
+                    <div>
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Urutkan</label>
+                        @php $sort = $filters['sort'] ?? 'id_desc'; @endphp
+                        <select name="sort"
+                                class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700
+                                       bg-white dark:bg-slate-800 text-slate-900 dark:text-white
+                                       focus:ring-2 focus:ring-primary/20 dark:focus:ring-primary/20 
+                                       focus:border-primary/20 dark:focus:border-primary/20
+                                       transition-colors">
+                            <option value="id_desc" @selected($sort === 'id_desc')>Terbaru</option>
+                            <option value="id_asc" @selected($sort === 'id_asc')>Terlama</option>
+                            <option value="name_asc" @selected($sort === 'name_asc')>Nama (A→Z)</option>
+                            <option value="balance_desc" @selected($sort === 'balance_desc')>Saldo Tertinggi</option>
+                            <option value="orders_desc" @selected($sort === 'orders_desc')>Orders Terbanyak</option>
+                        </select>
+                    </div>
+
+                    {{-- Per halaman --}}
+                    <div>
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Per Halaman</label>
+                        @php $pp = (int) ($filters['per_page'] ?? 20); @endphp
+                        <select name="per_page"
+                                class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700
+                                       bg-white dark:bg-slate-800 text-slate-900 dark:text-white
+                                       focus:ring-2 focus:ring-primary/20 dark:focus:ring-primary/20 
+                                       focus:border-primary/20 dark:focus:border-primary/20
+                                       transition-colors">
+                            @foreach ([10, 20, 30, 50] as $opt)
+                                    <option value="{{ $opt }}" @selected($pp === $opt)>{{ $opt }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
 
                     {{-- Tombol aksi --}}
                     <div class="flex items-center justify-end gap-3 pt-2">
-                        <a href="{{ route('admin.users.index') }}"
+                    <a href="{{ route('admin.users.index') }}"
                            class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl 
                                   border border-slate-200 dark:border-slate-700
                                   hover:border-primary/20 dark:hover:border-primary/20 
@@ -125,8 +125,8 @@
                                     d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                             </svg>
                             <span>Reset Filter</span>
-                        </a>
-                        <a href="{{ route('admin.users.export', request()->query()) }}"
+                    </a>
+                    <a href="{{ route('admin.users.export', request()->query()) }}"
                            class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl 
                                   border border-slate-200 dark:border-slate-700
                                   hover:border-primary/20 dark:hover:border-primary/20 
@@ -173,7 +173,7 @@
                 </div>
 
                 <div class="overflow-x-auto">
-                    <table class="min-w-full text-sm">
+                <table class="min-w-full text-sm">
                         <thead class="bg-slate-50 dark:bg-slate-700/50">
                             <tr>
                                 <th class="py-4 px-6 text-left font-semibold text-slate-700 dark:text-slate-300">#</th>
@@ -185,42 +185,42 @@
                                 <th class="py-4 px-6 text-left font-semibold text-slate-700 dark:text-slate-300">Created</th>
                                 <th class="py-4 px-6 text-left font-semibold text-slate-700 dark:text-slate-300">Updated</th>
                                 <th class="py-4 px-6 text-left font-semibold text-slate-700 dark:text-slate-300">Aksi</th>
-                            </tr>
-                        </thead>
+                        </tr>
+                    </thead>
                         <tbody class="divide-y divide-slate-200/60 dark:divide-slate-700/60">
-                            @forelse ($rows as $u)
-                                @php
-                                    $balance = (float) optional($u->wallet)->balance ?? 0;
-                                    $isActive = (int) $u->is_active === 1;
-                                @endphp
+                        @forelse ($rows as $u)
+                            @php
+                                $balance = (float) optional($u->wallet)->balance ?? 0;
+                                $isActive = (int) $u->is_active === 1;
+                            @endphp
                                 <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
                                     <td class="py-4 px-6">
                                         <span class="font-mono text-sm text-slate-600 dark:text-slate-400">#{{ $u->id }}</span>
                                     </td>
                                     <td class="py-4 px-6">
                                         <div class="font-medium text-slate-900 dark:text-white">{{ $u->name }}</div>
-                                    </td>
+                                </td>
                                     <td class="py-4 px-6">
                                         <div class="text-sm text-slate-600 dark:text-slate-400 break-all">{{ $u->email }}</div>
-                                    </td>
+                                </td>
                                     <td class="py-4 px-6">
-                                        <div class="flex flex-wrap items-center gap-2">
-                                            {{-- Role badge --}}
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        {{-- Role badge --}}
                                             <span class="inline-block px-3 py-1.5 rounded-xl text-xs font-medium ring-1 ring-inset
                                                      {{ $u->role === 'admin'
                                                          ? 'bg-purple-100 text-purple-800 ring-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:ring-purple-400/30'
                                                          : 'bg-slate-100 text-slate-800 ring-slate-200 dark:bg-slate-900/30 dark:text-slate-400 dark:ring-slate-400/30' }}">
-                                                {{ ucfirst($u->role) }}
-                                            </span>
-                                            {{-- Status badge --}}
+                                            {{ ucfirst($u->role) }}
+                                        </span>
+                                        {{-- Status badge --}}
                                             <span class="inline-block px-3 py-1.5 rounded-xl text-xs font-medium ring-1 ring-inset
                                                      {{ $isActive 
                                                          ? 'bg-green-100 text-green-800 ring-green-200 dark:bg-green-900/30 dark:text-green-400 dark:ring-green-400/30' 
                                                          : 'bg-red-100 text-red-800 ring-red-200 dark:bg-red-900/30 dark:text-red-400 dark:ring-red-400/30' }}">
-                                                {{ $isActive ? 'Active' : 'Banned' }}
-                                            </span>
-                                        </div>
-                                    </td>
+                                            {{ $isActive ? 'Active' : 'Banned' }}
+                                        </span>
+                                    </div>
+                                </td>
                                     <td class="py-4 px-6">
                                         <span class="font-mono text-sm text-slate-600 dark:text-slate-400">
                                             Rp {{ number_format($balance, 2) }}
@@ -242,8 +242,8 @@
                                         </div>
                                     </td>
                                     <td class="py-4 px-6">
-                                        <div class="flex flex-wrap gap-2">
-                                            <a href="{{ route('admin.users.show', $u) }}"
+                                    <div class="flex flex-wrap gap-2">
+                                        <a href="{{ route('admin.users.show', $u) }}"
                                                 class="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl 
                                                        border border-slate-200 dark:border-slate-700
                                                        hover:border-primary/20 dark:hover:border-primary/20 
@@ -257,8 +257,8 @@
                                                         d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                 </svg>
                                                 <span>Detail</span>
-                                            </a>
-                                            <a href="{{ route('admin.users.edit', $u) }}"
+                                        </a>
+                                        <a href="{{ route('admin.users.edit', $u) }}"
                                                 class="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl 
                                                        border border-slate-200 dark:border-slate-700
                                                        hover:border-primary/20 dark:hover:border-primary/20 
@@ -270,8 +270,8 @@
                                                         d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                                 </svg>
                                                 <span>Edit</span>
-                                            </a>
-                                            <a href="{{ route('admin.orders.index', ['q' => $u->email]) }}"
+                                        </a>
+                                        <a href="{{ route('admin.orders.index', ['q' => $u->email]) }}"
                                                 class="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl 
                                                        border border-slate-200 dark:border-slate-700
                                                        hover:border-primary/20 dark:hover:border-primary/20 
@@ -283,14 +283,14 @@
                                                         d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                                                 </svg>
                                                 <span>Orders</span>
-                                            </a>
+                                        </a>
 
-                                            {{-- Ban / Unban cepat --}}
-                                            <form method="POST" action="{{ route('admin.users.toggle-active', $u) }}"
+                                        {{-- Ban / Unban cepat --}}
+                                        <form method="POST" action="{{ route('admin.users.toggle-active', $u) }}"
                                                 onsubmit="return confirm('{{ $isActive ? 'Nonaktifkan (ban)' : 'Aktifkan (unban)' }} user ini?');"
                                                 class="inline">
-                                                @csrf
-                                                <button type="submit"
+                                            @csrf
+                                            <button type="submit"
                                                     class="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl 
                                                            border border-slate-200 dark:border-slate-700
                                                            hover:border-primary/20 dark:hover:border-primary/20 
@@ -302,13 +302,13 @@
                                                             d="{{ $isActive ? 'M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728' : 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' }}" />
                                                     </svg>
                                                     <span>{{ $isActive ? 'Ban' : 'Unban' }}</span>
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
                                     <td colspan="9" class="py-12 px-6 text-center">
                                         <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
                                             <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -319,11 +319,11 @@
                                         <h4 class="text-lg font-medium text-slate-900 dark:text-white mb-2">Belum ada pengguna</h4>
                                         <p class="text-sm text-slate-500 dark:text-slate-400">Tidak ada pengguna yang ditemukan dengan filter saat ini.</p>
                                     </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
             </div>
 
             {{-- Pagination --}}

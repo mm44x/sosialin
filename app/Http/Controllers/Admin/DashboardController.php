@@ -67,8 +67,14 @@ class DashboardController extends Controller
             ->whereBetween('created_at', [$fromStart, $toEnd])
             ->sum('amount');
 
+        // Data untuk chart orders trend (7 hari terakhir)
+        $ordersTrend = $this->getOrdersTrendData();
+
+        // Data untuk chart revenue (7 hari terakhir)
+        $revenueTrend = $this->getRevenueTrendData();
+
         // 10 order terbaru
-        $recentOrders = Order::with(['user:id,name', 'service:id,name'])
+        $recentOrders = Order::with(['user:id,name,email', 'service:id,name', 'service.category:id,name'])
             ->orderByDesc('id')
             ->limit(10)
             ->get();
@@ -95,8 +101,63 @@ class DashboardController extends Controller
                 'orderDebitSum' => $orderDebitSum,
                 'refundSum'     => $refundSum,
             ],
+            'ordersTrend'   => $ordersTrend,
+            'revenueTrend'  => $revenueTrend,
             'recentOrders'  => $recentOrders,
             'recentApiLogs' => $recentApiLogs,
         ]);
+    }
+
+    /**
+     * Get orders trend data for the last 7 days
+     */
+    private function getOrdersTrendData()
+    {
+        $data = [];
+        
+        for ($i = 6; $i >= 0; $i--) {
+            $date = Carbon::today()->subDays($i);
+            $startOfDay = $date->copy()->startOfDay();
+            $endOfDay = $date->copy()->endOfDay();
+            
+            $count = Order::whereBetween('created_at', [$startOfDay, $endOfDay])->count();
+            
+            $data[] = [
+                'date' => $date->format('Y-m-d'),
+                'label' => $date->format('d M'),
+                'count' => $count,
+                'formatted' => number_format($count)
+            ];
+        }
+        
+        return $data;
+    }
+
+    /**
+     * Get revenue trend data for the last 7 days
+     */
+    private function getRevenueTrendData()
+    {
+        $data = [];
+        
+        for ($i = 6; $i >= 0; $i--) {
+            $date = Carbon::today()->subDays($i);
+            $startOfDay = $date->copy()->startOfDay();
+            $endOfDay = $date->copy()->endOfDay();
+            
+            // Revenue dari orders yang completed
+            $revenue = Order::where('status', Order::STATUS_COMPLETED)
+                ->whereBetween('created_at', [$startOfDay, $endOfDay])
+                ->sum('cost');
+            
+            $data[] = [
+                'date' => $date->format('Y-m-d'),
+                'label' => $date->format('d M'),
+                'amount' => (float) $revenue,
+                'formatted' => 'Rp ' . number_format($revenue, 0, ',', '.')
+            ];
+        }
+        
+        return $data;
     }
 }
