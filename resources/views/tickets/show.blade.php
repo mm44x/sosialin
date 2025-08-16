@@ -31,17 +31,20 @@
             <div class="p-0 rounded-2xl bg-white dark:bg-white/5 ring-1 ring-slate-200/60 dark:ring-white/10 overflow-hidden">
                 <div class="max-h-[60vh] overflow-y-auto p-6 space-y-4">
                     @forelse ($messages as $msg)
-                        @php $isMe = ($msg->sender ?? null) === 'user'; @endphp
+                        @php
+                            $isMe = !($msg->is_admin ?? false);
+                            $attachmentPath = $msg->meta['attachment_path'] ?? null;
+                        @endphp
                         <div class="flex gap-3 {{ $isMe ? 'flex-row-reverse text-right' : '' }}">
                             <div class="flex-shrink-0 h-8 w-8 rounded-full bg-slate-200 dark:bg-slate-700 grid place-items-center text-xs font-semibold">
                                 {{ $isMe ? 'U' : 'A' }}
                             </div>
                             <div class="max-w-[85%]">
                                 <div class="{{ $isMe ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-800 dark:text-slate-100' }} px-4 py-3 rounded-2xl">
-                                    @if (trim((string)$msg->message) !== '')
-                                        <div class="whitespace-pre-wrap break-words text-sm">{{ $msg->message }}</div>
+                                    @if (trim((string)$msg->body) !== '')
+                                        <div class="whitespace-pre-wrap break-words text-sm">{{ $msg->body }}</div>
                                     @endif
-                                    @if ($msg->attachment_path)
+                                    @if ($attachmentPath)
                                         <div class="mt-2 text-xs">
                                             <a href="{{ route('tickets.download', $msg) }}" class="underline hover:no-underline">Lampiran</a>
                                         </div>
@@ -74,7 +77,7 @@
                             <textarea name="message" rows="3"
                                       class="mt-1 w-full px-3 py-2 rounded-xl border
                                              bg-white dark:bg-slate-800 dark:text-white dark:border-slate-600"
-                                      placeholder="Tulis pesan untuk admin..."></textarea>
+                                      placeholder="Tulis pesan untuk admin...">{{ old('message') }}</textarea>
                         </div>
                         <div class="md:col-span-3 space-y-3">
                             <div>
