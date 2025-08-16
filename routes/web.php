@@ -172,4 +172,25 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('wallet.transactions');
 });
 
+
+// USER — Tickets
+Route::middleware(['auth','verified'])->group(function () {
+    Route::get('/tickets',               [\App\Http\Controllers\TicketController::class, 'index'])->name('tickets.index');
+    Route::get('/tickets/create',        [\App\Http\Controllers\TicketController::class, 'create'])->name('tickets.create');
+    Route::post('/tickets',              [\App\Http\Controllers\TicketController::class, 'store'])->name('tickets.store');
+    Route::get('/tickets/{ticket}',      [\App\Http\Controllers\TicketController::class, 'show'])->name('tickets.show');
+    Route::post('/tickets/{ticket}/reply', [\App\Http\Controllers\TicketController::class, 'reply'])->name('tickets.reply');
+    Route::post('/tickets/{ticket}/close', [\App\Http\Controllers\TicketController::class, 'close'])->name('tickets.close');
+});
+
+// ADMIN — Tickets
+Route::middleware(['auth','verified','admin'])
+    ->prefix('admin')->name('admin.')
+    ->group(function () {
+        Route::get('/tickets',                 [\App\Http\Controllers\Admin\TicketController::class, 'index'])->name('tickets.index');
+        Route::get('/tickets/{ticket}',        [\App\Http\Controllers\Admin\TicketController::class, 'show'])->name('tickets.show');
+        Route::post('/tickets/{ticket}/reply', [\App\Http\Controllers\Admin\TicketController::class, 'reply'])->name('tickets.reply');
+        Route::post('/tickets/{ticket}/status',[\App\Http\Controllers\Admin\TicketController::class, 'setStatus'])->name('tickets.status');
+    });
+
 require __DIR__ . '/auth.php';
