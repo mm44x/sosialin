@@ -67,16 +67,16 @@ class TicketController extends Controller
             'order_id'        => $data['order_id'] ?? null,
             'status'          => 'open',
             'last_message_at' => now(),
-            'last_message_by' => 'user',
+            // 'last_message_by' => 'user', // This column does not exist
             'meta'            => ['ua' => substr((string)$request->userAgent(), 0, 255)],
         ]);
 
         TicketMessage::create([
             'ticket_id'       => $ticket->id,
-            'sender'          => 'user',
+            'is_admin'        => false,
             'user_id'         => $request->user()->id,
-            'message'         => $data['message'],
-            'attachment_path' => $path,
+            'body'            => $data['message'],
+            'meta'            => $path ? ['attachment_path' => $path] : null,
         ]);
 
         return redirect()->route('tickets.show', $ticket)
@@ -116,17 +116,17 @@ class TicketController extends Controller
 
         TicketMessage::create([
             'ticket_id'       => $ticket->id,
-            'sender'          => 'user',
+            'is_admin'        => false,
             'user_id'         => $request->user()->id,
-            'message'         => $data['message'] ?? '',
-            'attachment_path' => $path,
+            'body'            => $data['message'] ?? '',
+            'meta'            => $path ? ['attachment_path' => $path] : null,
         ]);
 
         // Balasan user akan “membuka kembali” tiket jika status closed
         $ticket->update([
             'status'          => $ticket->status === 'closed' ? 'open' : $ticket->status,
             'last_message_at' => now(),
-            'last_message_by' => 'user',
+            // 'last_message_by' => 'user', // This column does not exist
         ]);
 
         return back()->with('status', 'Balasan terkirim.');
@@ -138,8 +138,11 @@ class TicketController extends Controller
         $ticket = Ticket::findOrFail($message->ticket_id);
         abort_if($ticket->user_id !== $request->user()->id, 403);
 
-        if (!$message->attachment_path) abort(404);
+        $path = $message->meta['attachment_path'] ?? null;
+        if (!$path) {
+            abort(404);
+        }
 
-        return Storage::disk('public')->download($message->attachment_path);
+        return Storage::disk('public')->download($path);
     }
 }
