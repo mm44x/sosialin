@@ -101,9 +101,6 @@
 
                     {{-- Toolbar filter --}}
                     <div class="flex items-center gap-2">
-                        <input id="tlSearch" type="text" placeholder="Cari status/teks..."
-                            class="w-56 px-3 py-2 rounded-xl border bg-white/70 dark:bg-white/5 dark:text-white
-                          border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary">
                         <select id="tlFilter"
                             class="px-3 py-2 rounded-xl border bg-white/70 dark:bg-white/5 dark:text-white
                            border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary">
