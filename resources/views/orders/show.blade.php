@@ -1,15 +1,28 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 dark:text-white leading-tight">
-            Detail Order #{{ $order->id }}
-        </h2>
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <h2 class="text-2xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
+                    Detail Order #{{ $order->id }}
+                </h2>
+                <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                    Lihat detail lengkap dan timeline status order Anda
+                </p>
+            </div>
+            <nav class="flex space-x-4 text-sm">
+                <a href="{{ route('orders.index') }}" class="text-slate-600 dark:text-slate-400 hover:text-primary">
+                    ← Kembali ke Riwayat Order
+                </a>
+            </nav>
+        </div>
     </x-slot>
 
     <div class="py-6">
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8 space-y-6">
 
             {{-- Kartu ringkasan order --}}
-            <div class="p-6 rounded-2xl bg-white dark:bg-white/5 ring-1 ring-slate-200/60 dark:ring-white/10">
+            <div
+                class="p-6 rounded-2xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-xl ring-1 ring-slate-200/60 dark:ring-slate-700/60">
                 <div class="flex flex-wrap items-center gap-3 justify-between">
                     <div class="flex items-center gap-3">
                         <div class="text-lg font-semibold">Order #{{ $order->id }}</div>
@@ -20,29 +33,43 @@
                         </button>
                     </div>
                     <div>
-                        <span @class([
-                            'inline-block px-3 py-1 rounded-xl text-xs font-medium ring-1 ring-inset',
-                            'bg-yellow-100 text-yellow-800 ring-yellow-200' => in_array(
-                                $order->status,
-                                ['pending', 'processing']),
-                            'bg-green-100 text-green-800 ring-green-200' =>
-                                $order->status === 'completed',
-                            'bg-orange-100 text-orange-800 ring-orange-200' =>
-                                $order->status === 'partial',
-                            'bg-red-100 text-red-800 ring-red-200' => in_array($order->status, [
-                                'canceled',
-                                'error',
-                            ]),
-                            'bg-slate-100 text-slate-800 ring-slate-200' => !in_array($order->status, [
-                                'pending',
-                                'processing',
-                                'completed',
-                                'partial',
-                                'canceled',
-                                'error',
-                            ]),
-                        ])>
-                            {{ ucfirst($order->status) }}
+                        @php
+                            $st = strtolower($order->status ?? '');
+                            // Menentukan style berdasarkan status order
+                            switch ($st) {
+                                case 'pending':
+                                    $badgeClasses =
+                                        'bg-yellow-100 text-yellow-800 ring-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:ring-yellow-400/30';
+                                    break;
+                                case 'processing':
+                                    $badgeClasses =
+                                        'bg-blue-100 text-blue-800 ring-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:ring-blue-400/30';
+                                    break;
+                                case 'completed':
+                                    $badgeClasses =
+                                        'bg-green-100 text-green-800 ring-green-200 dark:bg-green-900/30 dark:text-green-400 dark:ring-green-400/30';
+                                    break;
+                                case 'partial':
+                                    $badgeClasses =
+                                        'bg-orange-100 text-orange-800 ring-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:ring-orange-400/30';
+                                    break;
+                                case 'canceled':
+                                case 'cancelled':
+                                    $badgeClasses =
+                                        'bg-red-100 text-red-800 ring-red-200 dark:bg-red-900/30 dark:text-red-400 dark:ring-red-400/30';
+                                    break;
+                                case 'error':
+                                    $badgeClasses =
+                                        'bg-red-100 text-red-800 ring-red-200 dark:bg-red-900/30 dark:text-red-400 dark:ring-red-400/30';
+                                    break;
+                                default:
+                                    $badgeClasses =
+                                        'bg-slate-100 text-slate-800 ring-slate-200 dark:bg-slate-900/30 dark:text-slate-400 dark:ring-slate-400/30';
+                            }
+                        @endphp
+                        <span
+                            class="inline-block px-2 py-1 rounded-lg text-xs font-medium ring-1 ring-inset {{ $badgeClasses }}">
+                            {{ ucfirst($st) ?: 'Unknown' }}
                         </span>
                     </div>
                 </div>
@@ -78,16 +105,33 @@
                 {{-- Aksi bawah kartu detail --}}
                 <div class="mt-6 flex flex-wrap gap-3">
                     <a href="{{ route('orders.index') }}"
-                        class="px-4 py-2 rounded-xl border dark:border-slate-600 hover:bg-primary/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary">
-                        Kembali
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-xl 
+                               border border-slate-200 dark:border-slate-700
+                               hover:border-primary/20 dark:hover:border-primary/20 
+                               hover:bg-primary/5 dark:hover:bg-primary/5
+                               text-slate-700 dark:text-slate-300
+                               transition-all duration-300">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                        </svg>
+                        <span>Kembali</span>
                     </a>
 
                     @unless (in_array($order->status, ['completed', 'error']))
                         <form method="POST" action="{{ route('orders.status-check', $order) }}" class="inline-flex">
                             @csrf
                             <button
-                                class="px-4 py-2 rounded-xl bg-primary text-white hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary">
-                                Cek status sekarang
+                                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl 
+                                       bg-gradient-to-r from-primary to-purple-600 
+                                       text-white font-medium shadow-sm 
+                                       hover:shadow-md transition-all duration-300 hover:scale-105
+                                       focus:outline-none focus:ring-2 focus:ring-primary/20">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                <span>Cek status sekarang</span>
                             </button>
                         </form>
                     @endunless
@@ -95,15 +139,19 @@
             </div>
 
             {{-- Timeline status --}}
-            <div class="p-6 rounded-2xl bg-white dark:bg-white/5 ring-1 ring-slate-200/60 dark:ring-white/10">
+            <div
+                class="p-6 rounded-2xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-xl ring-1 ring-slate-200/60 dark:ring-slate-700/60">
                 <div class="flex items-center justify-between gap-3 mb-4">
                     <div class="font-semibold">Timeline Status ({{ count($timeline) }})</div>
 
                     {{-- Toolbar filter --}}
                     <div class="flex items-center gap-2">
                         <select id="tlFilter"
-                            class="px-3 py-2 rounded-xl border bg-white/70 dark:bg-white/5 dark:text-white
-                           border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary">
+                            class="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700
+                                   bg-white dark:bg-slate-800 text-slate-900 dark:text-white
+                                   focus:ring-2 focus:ring-primary/20 dark:focus:ring-primary/20 
+                                   focus:border-primary/20 dark:focus:border-primary/20
+                                   transition-colors">
                             <option value="">Semua status</option>
                             <option value="pending">Pending</option>
                             <option value="processing">Processing</option>
@@ -179,8 +227,17 @@
 
                     <div class="mt-4 text-center">
                         <button id="tlMore" type="button"
-                            class="px-4 py-2 rounded-xl border dark:border-slate-600 hover:bg-primary/10">
-                            Tampilkan 20 lagi
+                            class="inline-flex items-center gap-2 px-4 py-2 rounded-xl 
+                                   border border-slate-200 dark:border-slate-700
+                                   hover:border-primary/20 dark:hover:border-primary/20 
+                                   hover:bg-primary/5 dark:hover:bg-primary/5
+                                   text-slate-700 dark:text-slate-300
+                                   transition-all duration-300">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 9l-7 7-7-7" />
+                            </svg>
+                            <span>Tampilkan 20 lagi</span>
                         </button>
                     </div>
                 @else

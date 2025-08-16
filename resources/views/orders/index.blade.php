@@ -206,58 +206,41 @@
 
                                     @php $st = strtolower($o->status ?? ''); @endphp
                                     <td class="whitespace-nowrap py-4 px-4">
-                                        <span @class([
-                                            'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium',
-                                            // Status variations
-                                            'bg-yellow-50 text-yellow-700 ring-1 ring-yellow-600/20' => in_array($st, [
-                                                'pending',
-                                                'processing',
-                                            ]),
-                                            'bg-green-50 text-green-700 ring-1 ring-green-600/20' =>
-                                                $st === 'completed',
-                                            'bg-orange-50 text-orange-700 ring-1 ring-orange-600/20' =>
-                                                $st === 'partial',
-                                            'bg-red-50 text-red-700 ring-1 ring-red-600/20' => in_array($st, [
-                                                'canceled',
-                                                'cancelled',
-                                                'error',
-                                            ]),
-                                            'bg-slate-50 text-slate-700 ring-1 ring-slate-600/20' => !in_array($st, [
-                                                'pending',
-                                                'processing',
-                                                'completed',
-                                                'partial',
-                                                'canceled',
-                                                'cancelled',
-                                                'error',
-                                            ]),
-                                        ])>
-                                            @if (in_array($st, ['pending', 'processing']))
-                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
-                                                    stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2"
-                                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                </svg>
-                                            @elseif($st === 'completed')
-                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
-                                                    stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2" d="M5 13l4 4L19 7" />
-                                                </svg>
-                                            @elseif($st === 'partial')
-                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
-                                                    stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2" d="M7 16V4M7 4L3 8m4-4l4 4" />
-                                                </svg>
-                                            @elseif(in_array($st, ['canceled', 'cancelled', 'error']))
-                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
-                                                    stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                                </svg>
-                                            @endif
+                                        @php
+                                            // Menentukan style berdasarkan status order
+                                            switch ($st) {
+                                                case 'pending':
+                                                    $badgeClasses =
+                                                        'bg-yellow-100 text-yellow-800 ring-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:ring-yellow-400/30';
+                                                    break;
+                                                case 'processing':
+                                                    $badgeClasses =
+                                                        'bg-blue-100 text-blue-800 ring-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:ring-blue-400/30';
+                                                    break;
+                                                case 'completed':
+                                                    $badgeClasses =
+                                                        'bg-green-100 text-green-800 ring-green-200 dark:bg-green-900/30 dark:text-green-400 dark:ring-green-400/30';
+                                                    break;
+                                                case 'partial':
+                                                    $badgeClasses =
+                                                        'bg-orange-100 text-orange-800 ring-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:ring-orange-400/30';
+                                                    break;
+                                                case 'canceled':
+                                                case 'cancelled':
+                                                    $badgeClasses =
+                                                        'bg-red-100 text-red-800 ring-red-200 dark:bg-red-900/30 dark:text-red-400 dark:ring-red-400/30';
+                                                    break;
+                                                case 'error':
+                                                    $badgeClasses =
+                                                        'bg-red-100 text-red-800 ring-red-200 dark:bg-red-900/30 dark:text-red-400 dark:ring-red-400/30';
+                                                    break;
+                                                default:
+                                                    $badgeClasses =
+                                                        'bg-slate-100 text-slate-800 ring-slate-200 dark:bg-slate-900/30 dark:text-slate-400 dark:ring-slate-400/30';
+                                            }
+                                        @endphp
+                                        <span
+                                            class="inline-block px-2 py-1 rounded-lg text-xs font-medium ring-1 ring-inset {{ $badgeClasses }}">
                                             {{ ucfirst($st) ?: 'Unknown' }}
                                         </span>
                                     </td>

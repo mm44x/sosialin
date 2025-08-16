@@ -1,9 +1,16 @@
 {{-- resources/views/wallet/transactions.blade.php --}}
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl dark:text-white leading-tight">
-            Riwayat Transaksi
-        </h2>
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <h2 class="text-2xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
+                    Riwayat Transaksi
+                </h2>
+                <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                    Pantau semua transaksi wallet Anda di satu tempat
+                </p>
+            </div>
+        </div>
     </x-slot>
 
     <div class="py-6">
